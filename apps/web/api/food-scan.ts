@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { foodScanRequestBodySchema } from "@nutrilog/shared";
 
-import { runGeminiFoodScan } from "../server/food-scan/gemini";
-import { runOpenAiFoodScan } from "../server/food-scan/openai";
-import { parseFoodScanModelOutput } from "../server/food-scan/parseResponse";
-import { buildFoodScanInstruction } from "../server/food-scan/prompt";
-import { resolveFoodScanProvider } from "../server/food-scan/provider";
-import type { FoodScanLogger } from "../server/food-scan/types";
+import { runGeminiFoodScan } from "../server/food-scan/gemini.js";
+import { runOpenAiFoodScan } from "../server/food-scan/openai.js";
+import { parseFoodScanModelOutput } from "../server/food-scan/parseResponse.js";
+import { buildFoodScanInstruction } from "../server/food-scan/prompt.js";
+import { resolveFoodScanProvider } from "../server/food-scan/provider.js";
+import type { FoodScanLogger } from "../server/food-scan/types.js";
 
 export const config = {
   maxDuration: 60,

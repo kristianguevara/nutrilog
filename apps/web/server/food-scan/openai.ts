@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import type { FoodScanRequestBody } from "@nutrilog/shared";
 
-import type { FoodScanLogger, FoodScanModelResult } from "./types";
+import type { FoodScanLogger, FoodScanModelResult } from "./types.js";
 
 function resolveModel(): string {
   return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";

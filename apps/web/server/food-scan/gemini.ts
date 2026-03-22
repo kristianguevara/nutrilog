@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { FoodScanRequestBody } from "@nutrilog/shared";
 
-import type { FoodScanLogger, FoodScanModelResult } from "./types";
+import type { FoodScanLogger, FoodScanModelResult } from "./types.js";
 
 /** Default aligns with current Gemini API model IDs (1.5 IDs are often 404 on v1beta). Override with GEMINI_MODEL. */
 function resolveModel(): string {

@@ -2,9 +2,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import { coachAdviceResponseSchema, type CoachAdviceRequest, type CoachAdviceResponse } from "@nutrilog/shared";
 
-import { extractJsonObject } from "../food-scan/parseResponse";
-import { resolveFoodScanProvider } from "../food-scan/provider";
-import type { FoodScanLogger } from "../food-scan/types";
+import { extractJsonObject } from "../food-scan/parseResponse.js";
+import { resolveFoodScanProvider } from "../food-scan/provider.js";
+import type { FoodScanLogger } from "../food-scan/types.js";
 
 function resolveOpenAiModel(): string {
   return process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";

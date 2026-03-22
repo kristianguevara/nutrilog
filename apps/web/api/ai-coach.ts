@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { coachAdviceRequestSchema } from "@nutrilog/shared";
 
-import { runCoachAdvice } from "../server/ai-coach/run";
-import type { FoodScanLogger } from "../server/food-scan/types";
+import { runCoachAdvice } from "../server/ai-coach/run.js";
+import type { FoodScanLogger } from "../server/food-scan/types.js";
 
 export const config = {
   maxDuration: 60,

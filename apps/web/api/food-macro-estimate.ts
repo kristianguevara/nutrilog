@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { foodMacroEstimateRequestSchema } from "@nutrilog/shared";
 
-import { runMacroEstimate } from "../server/food-macro-estimate/run";
-import type { FoodScanLogger } from "../server/food-scan/types";
+import { runMacroEstimate } from "../server/food-macro-estimate/run.js";
+import type { FoodScanLogger } from "../server/food-scan/types.js";
 
 export const config = {
   maxDuration: 60,
