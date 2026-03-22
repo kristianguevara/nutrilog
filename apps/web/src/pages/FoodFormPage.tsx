@@ -1,13 +1,14 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { LogItemCategory, MealType } from "@nutrilog/shared";
+import type { FoodLogEntry, LogItemCategory, MealType } from "@nutrilog/shared";
 import { foodLogEntryDraftSchema } from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
 import { RequiredMark } from "@/components/ui/RequiredMark.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
+import { FOOD_NAME_SUGGEST_MIN_CHARS, searchPastEntriesByFoodName } from "@/services/foodEntrySuggest.js";
 import { estimateMacrosFromFood } from "@/services/foodMacroEstimateService.js";
 
 const meals: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -89,6 +90,24 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
   const [assumptionsHint, setAssumptionsHint] = useState<string | null>(existing?.aiAssumptions ?? null);
+  const [foodNameFocused, setFoodNameFocused] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+
+  const nameSuggestions = useMemo(
+    () =>
+      searchPastEntriesByFoodName(entries, foodName, {
+        excludeId: existing?.id,
+        itemCategory,
+        limit: 3,
+      }),
+    [entries, foodName, itemCategory, existing?.id],
+  );
+
+  const showNameSuggestions =
+    foodNameFocused &&
+    !suggestionsDismissed &&
+    foodName.trim().length >= FOOD_NAME_SUGGEST_MIN_CHARS &&
+    nameSuggestions.length > 0;
 
   useEffect(() => {
     setItemCategory(initial.itemCategory);
@@ -189,6 +208,19 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
 
   function roundMacro(n: number): number {
     return Math.round(n * 10) / 10;
+  }
+
+  function applyPastEntrySuggestion(entry: FoodLogEntry) {
+    setFoodName(entry.foodName);
+    setQuantity(String(entry.quantity));
+    setUnit(entry.unit);
+    setCalories(String(Math.round(entry.calories)));
+    setProtein(String(roundMacro(entry.protein)));
+    setCarbs(String(roundMacro(entry.carbs)));
+    setFat(String(roundMacro(entry.fat)));
+    setItemCategory(entry.itemCategory);
+    setAssumptionsHint(null);
+    setSuggestionsDismissed(true);
   }
 
   function buildNutritionLookupQuery(): string {
@@ -312,22 +344,67 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
             </div>
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-slate-200" htmlFor="foodName">
               {itemCategory === "drink" ? "Drink name" : "Food name"}
               <RequiredMark />
             </label>
+            <p className="mt-1 text-xs text-slate-500">
+              Type at least {FOOD_NAME_SUGGEST_MIN_CHARS} letters for up to 3 suggestions from your history
+              (same category as above — {itemCategory === "drink" ? "drink" : "food"}).
+            </p>
             <input
               id="foodName"
               name="foodName"
+              autoComplete="off"
               className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
               value={foodName}
               onChange={(ev) => {
                 setFoodName(ev.target.value);
                 setAssumptionsHint(null);
+                setSuggestionsDismissed(false);
+              }}
+              onFocus={() => {
+                setFoodNameFocused(true);
+                setSuggestionsDismissed(false);
+              }}
+              onBlur={() => {
+                setFoodNameFocused(false);
+              }}
+              onKeyDown={(ev) => {
+                if (ev.key === "Escape") {
+                  setSuggestionsDismissed(true);
+                }
               }}
               required
             />
+            {showNameSuggestions ? (
+              <section
+                className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-lg ring-1 ring-black/40"
+                aria-label="Past entries matching this name"
+              >
+                <ul className="max-h-60 overflow-auto py-1">
+                  {nameSuggestions.map((e) => (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2.5 text-left text-sm transition hover:bg-slate-800/90 active:bg-slate-800"
+                        onMouseDown={(ev) => {
+                          ev.preventDefault();
+                          applyPastEntrySuggestion(e);
+                        }}
+                      >
+                        <span className="block font-medium text-slate-100">{e.foodName}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          {e.quantity} {e.unit} · {Math.round(e.calories)} kcal · P {roundMacro(e.protein)} · C{" "}
+                          {roundMacro(e.carbs)} · F {roundMacro(e.fat)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
