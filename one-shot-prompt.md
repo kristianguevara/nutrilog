@@ -29,15 +29,17 @@ Use this document in **any** greenfield session where you want a **single prompt
 | Goal | From | Command |
 |------|------|---------|
 | Install | **repository root** | `pnpm install` |
-| Frontend only (Vite) | **repository root** | `pnpm dev` — often **http://localhost:5173** |
-| Serverless routes + OpenAI locally | **`apps/web`** | `vercel dev` — often **http://localhost:3000**; ensures **`/api/*`** works like production |
-| Frontend + API in two terminals | Terminal A: **`cd apps/web && vercel dev`**; Terminal B: **repo root `pnpm dev`** | Point Vite’s **`/api` proxy** at `vercel dev` (default **`http://127.0.0.1:3000`**); override with **`VITE_VERCEL_DEV_URL`** in **`apps/web/.env.local`** if the port differs |
+| Frontend only (Vite) | **repository root** | `pnpm dev` — **http://localhost:3030** (fixed in `vite.config.ts` + `strictPort`) |
+| Serverless routes + OpenAI locally | **repository root** | **`pnpm dev:api`** → **`vercel dev --listen 5173 apps/web`** (run from **repo root**, not `cd apps/web`, if the Vercel project root is `apps/web`) — API at **`http://127.0.0.1:5173`** |
+| Frontend + API in two terminals | Terminal A: **`pnpm dev:api`**; Terminal B: **`pnpm dev`** | Vite on **3030**; proxy **`/api`** → **`http://127.0.0.1:5173`** (override **`VITE_VERCEL_DEV_URL`** only if you change the listen port) |
 | No backend / no key | **`apps/web/.env.local`** | `VITE_FOOD_SCAN_MOCK=true` then `pnpm dev` only |
 
 ### Docs the agent must deliver
 
-- **README at repo root:** prerequisites, install, **how to run frontend**, **how to run backend (serverless)**, **exact path** to **`apps/web/.env.example`** → **`.env.local`**, deploy env on Vercel, and a line that keys are **never** committed.
+- **README at repo root:** prerequisites, install, **how to run frontend**, **how to run backend (serverless)**, **exact path** to **`apps/web/.env.example`** → **`.env.local`** / **`.env`**, deploy env on Vercel, and a line that keys are **never** committed.
+- **Clarify local serverless:** plain **`pnpm dev` (Vite)** serves the SPA only; **`vercel dev`** from **`apps/web`** is what runs **`/api/*`** locally (or use **mock** with **`VITE_FOOD_SCAN_MOCK=true`** and Vite alone).
 - **`apps/web/.env.example`:** commented placeholders for **`OPENAI_*`**, mock flag, and proxy URL.
+- **PWA install (phones):** README must include short **iOS (Safari → Add to Home Screen)** and **Android (Chrome → Install / Add to Home screen)** steps, note **HTTPS** (deployed URL), and that **installing from localhost on a device** is uncommon—users typically open the **production** (or tunneled) URL.
 - Optional: **`agents.md`**, **`docs/*`**, Cursor rules — keep in sync when behavior changes.
 
 ### API pattern for “AI from image”
@@ -90,7 +92,7 @@ Do **not** recreate their full feature scope in the initial build. The MVP must 
 6. **Suggestion history** visible in Reports for the selected range (read from storage)  
 7. **Settings:** profile edit, **download export** (CSV or JSON) for a **date range** (defaults: first logged date → last logged date), **clear local data**  
 8. **Scan food:** **real camera** via **`getUserMedia`** on supported browsers (not only `<input capture>`); **upload** as separate path; **server-side** OpenAI vision via **`POST /api/food-scan`** (JSON: base64 image + optional **`userDescription`** for richer prompts and optional **notes** on saved lines); **never** ship API keys in the client; optional **`VITE_FOOD_SCAN_MOCK=true`** in **`apps/web/.env.local`** for offline mock  
-9. PWA installability  
+9. PWA installability; **README documents** how to add to home screen on **iOS** and **Android** (HTTPS deploy URL)  
 10. **Local-first persistence** with a **versioned** storage model and migration path  
 11. Monorepo: **`apps/web`** (PWA + Vercel serverless **`api/`**), **`apps/api`** (optional placeholder package), **`packages/shared`**  
 12. Memory/docs: **`agents.md`**, **`docs/*`**, Cursor rules, **`one-shot-prompt.md`** (this file)  
@@ -157,7 +159,7 @@ Do **not** recreate their full feature scope in the initial build. The MVP must 
 2. Repo + shared schemas + migrations  
 3. Working web app + PWA  
 4. Vercel config **documented for both root-directory strategies**  
-5. **README** with **directory-precise** env setup (**`apps/web/.env.local`**, **`apps/web/.env.example`**, Vercel env) and **frontend vs `vercel dev`** instructions  
+5. **README** with **directory-precise** env setup (**`apps/web/.env.local`** / **`.env`**, **`apps/web/.env.example`**, Vercel env), **frontend vs `vercel dev`** (only CLI runs serverless locally), and **PWA install on phone** (iOS/Android)  
 6. Update **`agents.md`** / **`docs`** when behavior changes  
 7. Deliver **summary, assumptions, and next steps**  
 

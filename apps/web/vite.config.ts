@@ -6,12 +6,28 @@ import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** Local API: `vercel dev --listen 5173`. You use `pnpm dev` on 3030; Vercel spawns its own Vite with VERCEL=1 → 3031 to avoid a port clash. */
+const LOCAL_VERCEL_DEV_URL = "http://127.0.0.1:5173";
+
+const DEFAULT_DEV_PORT = 3030;
+/** When `vercel dev` starts Vite as a subprocess, it sets `VERCEL=1`; use a different port than standalone `pnpm dev`. */
+const VERCEL_SPAWNED_VITE_PORT = 3031;
+
+function resolveDevServerPort(): number {
+  const fromEnv = Number(process.env.VITE_DEV_PORT);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return fromEnv;
+  if (process.env.VERCEL === "1") return VERCEL_SPAWNED_VITE_PORT;
+  return DEFAULT_DEV_PORT;
+}
+
 export default defineConfig({
   server: {
+    port: resolveDevServerPort(),
+    strictPort: true,
     proxy: {
-      // When running `vercel dev` from `apps/web` (often http://127.0.0.1:3000), forward API routes during Vite dev.
+      // `pnpm dev` (this server) proxies /api → vercel dev on 5173 by default.
       "/api": {
-        target: process.env.VITE_VERCEL_DEV_URL ?? "http://127.0.0.1:3000",
+        target: process.env.VITE_VERCEL_DEV_URL ?? LOCAL_VERCEL_DEV_URL,
         changeOrigin: true,
       },
     },

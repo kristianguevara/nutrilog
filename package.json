@@ -3,7 +3,8 @@
   "private": true,
   "packageManager": "pnpm@9.14.4",
   "scripts": {
-    "dev": "pnpm --filter @nutrilog/web dev",
+    "dev": "node scripts/dev-frontend-restart.mjs",
+    "dev:api": "node scripts/dev-api-restart.mjs",
     "build": "pnpm --filter @nutrilog/shared build && pnpm --filter @nutrilog/api build && pnpm --filter @nutrilog/web build",
     "preview": "pnpm --filter @nutrilog/web preview",
     "lint": "pnpm --filter @nutrilog/web lint",

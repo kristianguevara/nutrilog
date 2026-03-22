@@ -20,6 +20,15 @@ export default {
       boxShadow: {
         card: "0 1px 0 rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.35)",
       },
+      keyframes: {
+        "scan-progress": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(350%)" },
+        },
+      },
+      animation: {
+        "scan-progress": "scan-progress 1.15s ease-in-out infinite",
+      },
     },
   },
   plugins: [],

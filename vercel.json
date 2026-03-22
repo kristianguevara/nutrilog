@@ -3,5 +3,6 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @nutrilog/shared build && pnpm --filter @nutrilog/web build",
   "outputDirectory": "apps/web/dist",
-  "framework": null
+  "framework": null,
+  "devCommand": "pnpm --filter @nutrilog/web exec vite --port 3031 --strictPort"
 }
