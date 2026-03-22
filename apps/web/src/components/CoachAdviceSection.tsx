@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CoachAdvice, CoachAdviceInputSnapshot, FoodLogEntry, UserProfile } from "@nutrilog/shared";
 import { coachAdviceInputSnapshotSchema } from "@nutrilog/shared";
+import { CoachMessageMarkdown } from "@/components/CoachMessageMarkdown.js";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
 import { requestCoachAdvice } from "@/services/coachAdviceService.js";
@@ -173,8 +174,8 @@ export function CoachAdviceSection(props: {
               <p className="mt-2 text-sm text-slate-400">
                 {active.sequence === 1 ? "First" : "Second"} of the day · {formatGeneratedAt(active.generatedAt)}
               </p>
-              <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/40 p-3">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{active.summary}</p>
+              <div className="coach-advice-md mt-3 max-h-80 overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/40 p-3">
+                <CoachMessageMarkdown text={active.summary} />
               </div>
             </>
           ) : null}
