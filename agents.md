@@ -42,6 +42,7 @@ NutriLog is a **personal-use**, **mobile-first** **PWA** for nutrition and calor
 
 - **Server:** `apps/web/api/food-scan.ts` (Vercel serverless) delegates to **`apps/web/server/food-scan/`** — **`openai.ts`** (OpenAI vision + JSON) or **`gemini.ts`** (Google Gemini vision + JSON). Same prompt in **`prompt.ts`**; response parsing in **`parseResponse.ts`**. Env: **`FOOD_SCAN_PROVIDER`** = unset/`openai` (needs **`OPENAI_API_KEY`**, optional **`OPENAI_MODEL`**) or **`gemini`**/`google` (needs **`GEMINI_API_KEY`**, optional **`GEMINI_MODEL`** — defaults to **`gemini-2.5-flash`**). Validates with `@nutrilog/shared` schemas. Use model IDs from Google’s docs; legacy **`gemini-1.5-flash`** may 404. Gemini quota `limit: 0` usually requires billing linked on the GCP project; see README troubleshooting.
 - **Client:** `aiScanService.ts` posts base64 JSON to **`/api/food-scan`** (no keys in bundle). Set **`VITE_FOOD_SCAN_MOCK=true`** to force mock. Camera uses **`getUserMedia`**.
+- **Manual macro estimate:** `apps/web/api/food-macro-estimate.ts` + **`server/food-macro-estimate/run.ts`** — text-only JSON (same **`FOOD_SCAN_PROVIDER`** / keys as food-scan). **`FoodFormPage`** “Auto-fill calories & macros” calls **`foodMacroEstimateService.ts`**; optional **notes** go into the model prompt.
 - **Images:** never persist image bytes; only optional **metadata** on confirmed entries.
 
 ## UX principles

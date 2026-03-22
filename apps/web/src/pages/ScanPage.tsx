@@ -4,6 +4,7 @@ import type { FoodLogEntryDraft, MealType } from "@nutrilog/shared";
 import { foodLogEntryDraftSchema } from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
+import { RequiredMark } from "@/components/ui/RequiredMark.js";
 import { Card } from "@/components/ui/Card.js";
 import { captureFrameFile, openCameraStream, stopMediaStream } from "@/lib/cameraCapture.js";
 import { mealLabel } from "@/lib/format.js";
@@ -360,6 +361,7 @@ export function ScanPage() {
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-200" htmlFor="mealDefault">
                   Default meal
+                  <RequiredMark />
                 </label>
                 <select
                   id="mealDefault"
@@ -510,6 +512,7 @@ export function ScanPage() {
                 <div>
                   <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-name`}>
                     Food name
+                    <RequiredMark />
                   </label>
                   <input
                     id={`${row.key}-name`}
@@ -524,6 +527,7 @@ export function ScanPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-cal`}>
                       Calories
+                      <RequiredMark />
                     </label>
                     <input
                       id={`${row.key}-cal`}
@@ -537,6 +541,7 @@ export function ScanPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-meal`}>
                       Meal
+                      <RequiredMark />
                     </label>
                     <select
                       id={`${row.key}-meal`}
@@ -558,6 +563,7 @@ export function ScanPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-p`}>
                       P
+                      <RequiredMark />
                     </label>
                     <input
                       id={`${row.key}-p`}
@@ -571,6 +577,7 @@ export function ScanPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-c`}>
                       C
+                      <RequiredMark />
                     </label>
                     <input
                       id={`${row.key}-c`}
@@ -584,6 +591,7 @@ export function ScanPage() {
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-f`}>
                       F
+                      <RequiredMark />
                     </label>
                     <input
                       id={`${row.key}-f`}

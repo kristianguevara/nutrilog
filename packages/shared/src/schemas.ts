@@ -144,3 +144,23 @@ export type SuggestionInputSnapshot = z.infer<typeof suggestionInputSnapshotSche
 export type SuggestionSnapshot = z.infer<typeof suggestionSnapshotSchema>;
 export type FoodScanApiItem = z.infer<typeof foodScanApiItemSchema>;
 export type FoodScanRequestBody = z.infer<typeof foodScanRequestBodySchema>;
+
+/** POST /api/food-macro-estimate — text-only macro estimate for manual food entry. */
+export const foodMacroEstimateRequestSchema = z.object({
+  foodName: z.string().min(1).max(200),
+  quantity: z.number().positive().finite(),
+  unit: z.string().min(1).max(40),
+  /** Extra context for the model (brand, cooking method, etc.); not required. */
+  notes: z.string().max(2000).optional(),
+});
+
+export const foodMacroEstimateResponseSchema = z.object({
+  calories: z.number().nonnegative().finite(),
+  protein: z.number().nonnegative().finite(),
+  carbs: z.number().nonnegative().finite(),
+  fat: z.number().nonnegative().finite(),
+  assumptions: z.string().max(2000).optional(),
+});
+
+export type FoodMacroEstimateRequest = z.infer<typeof foodMacroEstimateRequestSchema>;
+export type FoodMacroEstimateResponse = z.infer<typeof foodMacroEstimateResponseSchema>;

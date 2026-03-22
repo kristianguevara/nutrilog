@@ -5,6 +5,7 @@ import type { GoalType } from "@nutrilog/shared";
 import { userProfileDraftSchema } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
+import { RequiredMark } from "@/components/ui/RequiredMark.js";
 import {
   buildExportBundle,
   downloadTextFile,
@@ -109,6 +110,7 @@ export function SettingsPage() {
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="snickname">
               Nickname
+              <RequiredMark />
             </label>
             <input
               id="snickname"
@@ -123,6 +125,7 @@ export function SettingsPage() {
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="semail">
               Email
+              <RequiredMark />
             </label>
             <input
               id="semail"
@@ -138,6 +141,7 @@ export function SettingsPage() {
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="sgoal">
               Goal
+              <RequiredMark />
             </label>
             <select
               id="sgoal"
@@ -186,6 +190,7 @@ export function SettingsPage() {
           <div>
             <label className="block text-xs font-medium text-slate-400" htmlFor="export-start">
               From
+              <RequiredMark />
             </label>
             <input
               id="export-start"
@@ -199,6 +204,7 @@ export function SettingsPage() {
           <div>
             <label className="block text-xs font-medium text-slate-400" htmlFor="export-end">
               To
+              <RequiredMark />
             </label>
             <input
               id="export-end"

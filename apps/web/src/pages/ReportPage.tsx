@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { compareIsoDate, parseLocalDateIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
+import { RequiredMark } from "@/components/ui/RequiredMark.js";
 import { filterSuggestionHistoryInRange } from "@/lib/exportData.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
 import { buildRangeReport, defaultLastNDaysInclusive } from "@/services/analyticsService.js";
@@ -53,6 +54,7 @@ export function ReportPage() {
           <div>
             <label className="block text-xs font-medium text-slate-400" htmlFor="range-start">
               Start
+              <RequiredMark />
             </label>
             <input
               id="range-start"
@@ -65,6 +67,7 @@ export function ReportPage() {
           <div>
             <label className="block text-xs font-medium text-slate-400" htmlFor="range-end">
               End
+              <RequiredMark />
             </label>
             <input
               id="range-end"

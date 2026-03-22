@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { PullToRefresh } from "@/components/PullToRefresh.js";
 import { AppShell } from "@/layouts/AppShell.js";
 import { AppStateProvider, useAppState } from "@/providers/AppStateProvider.js";
 import { FoodFormPage } from "@/pages/FoodFormPage.js";
@@ -75,7 +76,9 @@ export function App() {
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
       <AppStateProvider>
-        <AppRoutes />
+        <PullToRefresh>
+          <AppRoutes />
+        </PullToRefresh>
       </AppStateProvider>
     </div>
   );

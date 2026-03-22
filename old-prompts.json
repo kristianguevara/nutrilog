@@ -1,0 +1,26 @@
+{
+  "items": [
+      {
+          "foodName": "Filipino fried chicken",
+          "quantity": 9,
+          "unit": "pieces",
+          "calories": 2700,
+          "protein": 225,
+          "carbs": 135,
+          "fat": 225,
+          "confidence": 0.8,
+          "assumptions": "Assumed average size mixed cuts of fried chicken; specific Filipino seasoning and breading may vary macronutrients; oil absorption estimates are rough."
+      },
+      {
+          "foodName": "Sweet chili dipping sauce",
+          "quantity": 2,
+          "unit": "fl oz",
+          "calories": 150,
+          "protein": 0,
+          "carbs": 35,
+          "fat": 0,
+          "confidence": 0.7,
+          "assumptions": "Assumed a common sweet chili sauce or similar Asian-style dipping sauce; quantity is a visual estimate of a small serving bowl."
+      }
+  ]
+}

@@ -5,6 +5,7 @@ import type { GoalType } from "@nutrilog/shared";
 import { userProfileDraftSchema } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
+import { RequiredMark } from "@/components/ui/RequiredMark.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
 
 export function OnboardingPage() {
@@ -61,6 +62,7 @@ export function OnboardingPage() {
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="nickname">
               Nickname
+              <RequiredMark />
             </label>
             <input
               id="nickname"
@@ -76,6 +78,7 @@ export function OnboardingPage() {
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="email">
               Email
+              <RequiredMark />
             </label>
             <input
               id="email"
@@ -91,7 +94,10 @@ export function OnboardingPage() {
           </div>
 
           <fieldset>
-            <legend className="text-sm font-medium text-slate-200">Goal</legend>
+            <legend className="text-sm font-medium text-slate-200">
+              Goal
+              <RequiredMark />
+            </legend>
             <div className="mt-3 space-y-2">
               {goalOptions.map((g) => (
                 <label
