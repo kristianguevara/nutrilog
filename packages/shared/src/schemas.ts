@@ -4,6 +4,9 @@ export const goalTypeSchema = z.enum(["lose_weight", "maintain_weight", "gain_we
 
 export const mealTypeSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
 
+/** Whether the line is solid food or a beverage — same macro fields either way. */
+export const logItemCategorySchema = z.enum(["food", "drink"]);
+
 export const sourceTypeSchema = z.enum(["manual", "ai_scan"]);
 
 export const imageSourceMethodSchema = z.enum(["camera", "upload", "unknown"]);
@@ -30,6 +33,7 @@ export const foodLogEntrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   mealType: mealTypeSchema,
+  itemCategory: logItemCategorySchema.default("food"),
   foodName: z.string().min(1).max(200),
   quantity: z.number().positive().finite(),
   unit: z.string().min(1).max(40),
@@ -82,6 +86,60 @@ export const suggestionSnapshotSchema = z.object({
   suggestions: z.array(suggestionItemSchema),
 });
 
+/** Input snapshot stored with each LLM coach response (for analytics / replay). */
+export const coachAdviceInputSnapshotSchema = z.object({
+  dayCalories: z.number().nonnegative().finite(),
+  dayProtein: z.number().nonnegative().finite(),
+  dayCarbs: z.number().nonnegative().finite(),
+  dayFat: z.number().nonnegative().finite(),
+  entryCount: z.number().int().nonnegative(),
+});
+
+/** One saved AI coach message for a calendar day (max 2 per day in the app). */
+export const coachAdviceSchema = z.object({
+  id: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** 1 = first coach request that day, 2 = second */
+  sequence: z.number().int().min(1).max(2),
+  generatedAt: z.string().datetime(),
+  inputSnapshot: coachAdviceInputSnapshotSchema,
+  summary: z.string().min(1).max(16000),
+});
+
+export const coachAdviceDayEntrySchema = z.object({
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  mealType: mealTypeSchema,
+  itemCategory: logItemCategorySchema,
+  foodName: z.string().min(1).max(200),
+  quantity: z.number().positive().finite(),
+  unit: z.string().min(1).max(40),
+  calories: z.number().nonnegative().finite(),
+  protein: z.number().nonnegative().finite(),
+  carbs: z.number().nonnegative().finite(),
+  fat: z.number().nonnegative().finite(),
+});
+
+export const coachAdviceRequestSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  coachInsightNumber: z.union([z.literal(1), z.literal(2)]),
+  profile: z.object({
+    nickname: z.string().min(1).max(80).optional(),
+    goalType: goalTypeSchema,
+    dailyCalorieTarget: z.number().positive().finite().optional(),
+  }),
+  dayTotals: z.object({
+    calories: z.number().nonnegative().finite(),
+    protein: z.number().nonnegative().finite(),
+    carbs: z.number().nonnegative().finite(),
+    fat: z.number().nonnegative().finite(),
+  }),
+  entries: z.array(coachAdviceDayEntrySchema).min(1).max(200),
+});
+
+export const coachAdviceResponseSchema = z.object({
+  summary: z.string().min(1).max(16000),
+});
+
 export const persistedStateV1Schema = z.object({
   version: z.literal(1),
   profile: userProfileSchema.nullable(),
@@ -93,6 +151,14 @@ export const persistedStateV2Schema = z.object({
   profile: userProfileSchema.nullable(),
   entries: z.array(foodLogEntrySchema),
   suggestionHistory: z.array(suggestionSnapshotSchema),
+});
+
+export const persistedStateV3Schema = z.object({
+  version: z.literal(3),
+  profile: userProfileSchema.nullable(),
+  entries: z.array(foodLogEntrySchema),
+  suggestionHistory: z.array(suggestionSnapshotSchema),
+  coachAdviceHistory: z.array(coachAdviceSchema),
 });
 
 export const appStorageSchema = z.object({
@@ -132,6 +198,7 @@ export const foodScanRequestBodySchema = z.object({
 
 export type GoalType = z.infer<typeof goalTypeSchema>;
 export type MealType = z.infer<typeof mealTypeSchema>;
+export type LogItemCategory = z.infer<typeof logItemCategorySchema>;
 export type SourceType = z.infer<typeof sourceTypeSchema>;
 export type ImageMetadata = z.infer<typeof imageMetadataSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;
@@ -142,6 +209,11 @@ export type SuggestionTone = z.infer<typeof suggestionToneSchema>;
 export type SuggestionItem = z.infer<typeof suggestionItemSchema>;
 export type SuggestionInputSnapshot = z.infer<typeof suggestionInputSnapshotSchema>;
 export type SuggestionSnapshot = z.infer<typeof suggestionSnapshotSchema>;
+export type CoachAdviceInputSnapshot = z.infer<typeof coachAdviceInputSnapshotSchema>;
+export type CoachAdvice = z.infer<typeof coachAdviceSchema>;
+export type CoachAdviceDayEntry = z.infer<typeof coachAdviceDayEntrySchema>;
+export type CoachAdviceRequest = z.infer<typeof coachAdviceRequestSchema>;
+export type CoachAdviceResponse = z.infer<typeof coachAdviceResponseSchema>;
 export type FoodScanApiItem = z.infer<typeof foodScanApiItemSchema>;
 export type FoodScanRequestBody = z.infer<typeof foodScanRequestBodySchema>;
 
@@ -164,3 +236,5 @@ export const foodMacroEstimateResponseSchema = z.object({
 
 export type FoodMacroEstimateRequest = z.infer<typeof foodMacroEstimateRequestSchema>;
 export type FoodMacroEstimateResponse = z.infer<typeof foodMacroEstimateResponseSchema>;
+
+export type PersistedStateV3 = z.infer<typeof persistedStateV3Schema>;

@@ -1,5 +1,16 @@
-import type { GoalType, MealType } from "@nutrilog/shared";
+import type { GoalType, LogItemCategory, MealType } from "@nutrilog/shared";
 import { parseLocalDateIso } from "@nutrilog/shared";
+
+export function logItemCategoryLabel(category: LogItemCategory): string {
+  switch (category) {
+    case "food":
+      return "Food";
+    case "drink":
+      return "Drink";
+    default:
+      return category;
+  }
+}
 
 export function mealLabel(meal: MealType): string {
   switch (meal) {

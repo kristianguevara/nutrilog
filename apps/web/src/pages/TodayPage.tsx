@@ -2,10 +2,11 @@ import { useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { formatLocalDateIso, parseLocalDateIso, suggestionInputSnapshotSchema } from "@nutrilog/shared";
 import type { MealType } from "@nutrilog/shared";
+import { CoachAdviceSection } from "@/components/CoachAdviceSection.js";
 import { ErrorBanner } from "@/components/ErrorBanner.js";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
-import { formatDisplayDate, mealLabel } from "@/lib/format.js";
+import { formatDisplayDate, logItemCategoryLabel, mealLabel } from "@/lib/format.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
 import { buildSuggestions } from "@/services/suggestionEngine.js";
 import { groupByMeal, mealTotals, sumDayTotals } from "@/services/foodLogService.js";
@@ -17,8 +18,17 @@ function addDaysIso(iso: string, delta: number): string {
 }
 
 export function TodayPage() {
-  const { profile, entries, loadError, storageError, clearErrors, ready, recordSuggestionSnapshot } =
-    useAppState();
+  const {
+    profile,
+    entries,
+    loadError,
+    storageError,
+    clearErrors,
+    ready,
+    recordSuggestionSnapshot,
+    coachAdviceHistory,
+    recordCoachAdvice,
+  } = useAppState();
   const [params, setParams] = useSearchParams();
   const raw = params.get("date");
   const today = formatLocalDateIso(new Date());
@@ -151,18 +161,25 @@ export function TodayPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         <Link to={`/food/new?date=${selectedDate}`} className="block">
-          <Button className="w-full">Add food</Button>
+          <Button className="w-full">🍽️ Add food</Button>
         </Link>
-        <Link to={`/scan?date=${selectedDate}`} className="block">
-          <Button variant="secondary" className="w-full">
-            Scan food
-          </Button>
+        <Link to={`/food/new?date=${selectedDate}&category=drink`} className="block">
+          <Button className="w-full">🥤 Add drink</Button>
         </Link>
       </div>
+      <Link to={`/scan?date=${selectedDate}`} className="mb-4 block">
+        <Button className="w-full">📷 Scan meal</Button>
+      </Link>
 
       {suggestions.length > 0 ? (
         <section className="mb-6 space-y-3" aria-label="Suggestions">
-          <h2 className="text-sm font-semibold text-slate-200">Suggestions</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200">Suggestions</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Coaching-style tips from your log and profile — computed on this device. No AI calls; no API credits
+              used.
+            </p>
+          </div>
           <div className="space-y-3">
             {suggestions.map((s) => (
               <Card key={s.id} className="p-4">
@@ -173,6 +190,16 @@ export function TodayPage() {
             ))}
           </div>
         </section>
+      ) : null}
+
+      {profile ? (
+        <CoachAdviceSection
+          selectedDate={selectedDate}
+          profile={profile}
+          entries={entries}
+          coachAdviceHistory={coachAdviceHistory}
+          recordCoachAdvice={recordCoachAdvice}
+        />
       ) : null}
 
       <section className="space-y-4" aria-label="Meals">
@@ -206,7 +233,14 @@ export function TodayPage() {
                       className="flex items-start justify-between gap-3 rounded-xl border border-slate-800/60 bg-slate-950/30 px-3 py-3"
                     >
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-100">{e.foodName}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium text-slate-100">{e.foodName}</p>
+                          {e.itemCategory === "drink" ? (
+                            <span className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-200/95">
+                              {logItemCategoryLabel(e.itemCategory)}
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="text-xs text-slate-500">
                           {e.quantity} {e.unit} · {e.time} · {Math.round(e.calories)} kcal
                         </p>

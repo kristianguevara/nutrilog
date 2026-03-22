@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import type { MealType } from "@nutrilog/shared";
+import type { LogItemCategory, MealType } from "@nutrilog/shared";
 import { foodLogEntryDraftSchema } from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
@@ -16,6 +16,15 @@ function isMealType(v: string | null): v is MealType {
   return v === "breakfast" || v === "lunch" || v === "dinner" || v === "snack";
 }
 
+function isLogItemCategory(v: string | null): v is LogItemCategory {
+  return v === "food" || v === "drink";
+}
+
+function foodFormTitle(mode: "create" | "edit", itemCategory: LogItemCategory): string {
+  const noun = itemCategory === "drink" ? "drink" : "food";
+  return mode === "create" ? `Add ${noun}` : `Edit ${noun}`;
+}
+
 export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -26,6 +35,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
 
   const defaultDate = params.get("date") ?? formatLocalDateIso(new Date());
   const mealParam = params.get("meal");
+  const categoryParam = params.get("category");
 
   const initial = useMemo(() => {
     if (existing) {
@@ -33,6 +43,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
         date: existing.date,
         time: existing.time,
         mealType: existing.mealType,
+        itemCategory: existing.itemCategory,
         foodName: existing.foodName,
         quantity: String(existing.quantity),
         unit: existing.unit,
@@ -44,11 +55,13 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
       };
     }
     const meal = isMealType(mealParam) ? mealParam : "snack";
+    const itemCategory: LogItemCategory = isLogItemCategory(categoryParam) ? categoryParam : "food";
     const now = new Date();
     return {
       date: defaultDate,
       time: formatLocalTimeIso(now),
       mealType: meal,
+      itemCategory,
       foodName: "",
       quantity: "1",
       unit: "serving",
@@ -58,11 +71,12 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
       fat: "",
       notes: "",
     };
-  }, [existing, defaultDate, mealParam]);
+  }, [existing, defaultDate, mealParam, categoryParam]);
 
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [mealType, setMealType] = useState<MealType>(initial.mealType);
+  const [itemCategory, setItemCategory] = useState<LogItemCategory>(initial.itemCategory);
   const [foodName, setFoodName] = useState(initial.foodName);
   const [quantity, setQuantity] = useState(initial.quantity);
   const [unit, setUnit] = useState(initial.unit);
@@ -75,6 +89,10 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
   const [assumptionsHint, setAssumptionsHint] = useState<string | null>(existing?.aiAssumptions ?? null);
+
+  useEffect(() => {
+    setItemCategory(initial.itemCategory);
+  }, [initial.itemCategory]);
 
   if (mode === "edit" && id && !existing) {
     return <Navigate to="/" replace />;
@@ -94,6 +112,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
       date,
       time,
       mealType,
+      itemCategory,
       foodName: foodName.trim(),
       quantity: q,
       unit: unit.trim(),
@@ -133,7 +152,8 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
     setError(null);
     const name = foodName.trim();
     if (!name) {
-      setAutofillError("Enter a food name first.");
+      const kind = itemCategory === "drink" ? "drink" : "food";
+      setAutofillError(`Enter a ${kind} name first.`);
       return;
     }
     const q = Number(quantity);
@@ -211,8 +231,8 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-10 pt-6">
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300/90">Food</p>
-          <h1 className="text-2xl font-semibold text-slate-50">{mode === "create" ? "Add food" : "Edit food"}</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300/90">Log</p>
+          <h1 className="text-2xl font-semibold text-slate-50">{foodFormTitle(mode, itemCategory)}</h1>
         </div>
         <Link to="/" className="text-sm font-semibold text-slate-300 hover:text-white">
           Close
@@ -254,29 +274,47 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-200" htmlFor="mealType">
-              Meal
-              <RequiredMark />
-            </label>
-            <select
-              id="mealType"
-              name="mealType"
-              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
-              value={mealType}
-              onChange={(ev) => setMealType(ev.target.value as MealType)}
-            >
-              {meals.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-200" htmlFor="itemCategory">
+                Type
+                <RequiredMark />
+              </label>
+              <select
+                id="itemCategory"
+                name="itemCategory"
+                className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+                value={itemCategory}
+                onChange={(ev) => setItemCategory(ev.target.value as LogItemCategory)}
+              >
+                <option value="food">Food</option>
+                <option value="drink">Drink</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-200" htmlFor="mealType">
+                Meal
+                <RequiredMark />
+              </label>
+              <select
+                id="mealType"
+                name="mealType"
+                className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+                value={mealType}
+                onChange={(ev) => setMealType(ev.target.value as MealType)}
+              >
+                {meals.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="foodName">
-              Food name
+              {itemCategory === "drink" ? "Drink name" : "Food name"}
               <RequiredMark />
             </label>
             <input

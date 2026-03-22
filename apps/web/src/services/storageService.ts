@@ -1,6 +1,7 @@
 import {
   persistedStateV1Schema,
   persistedStateV2Schema,
+  persistedStateV3Schema,
   type FoodLogEntry,
   type UserProfile,
 } from "@nutrilog/shared";
@@ -8,23 +9,33 @@ import { z } from "zod";
 
 const STORAGE_KEY = "nutrilog:v1:state";
 
-const legacyUnionSchema = z.union([persistedStateV2Schema, persistedStateV1Schema]);
+const legacyUnionSchema = z.union([persistedStateV3Schema, persistedStateV2Schema, persistedStateV1Schema]);
 
-export type PersistedState = z.infer<typeof persistedStateV2Schema>;
+export type PersistedState = z.infer<typeof persistedStateV3Schema>;
 
 export function createEmptyState(): PersistedState {
-  return { version: 2, profile: null, entries: [], suggestionHistory: [] };
+  return { version: 3, profile: null, entries: [], suggestionHistory: [], coachAdviceHistory: [] };
 }
 
-function normalizeToV2(raw: z.infer<typeof legacyUnionSchema>): PersistedState {
-  if (raw.version === 2) {
+function normalizeToV3(raw: z.infer<typeof legacyUnionSchema>): PersistedState {
+  if (raw.version === 3) {
     return raw;
   }
+  if (raw.version === 2) {
+    return {
+      version: 3,
+      profile: raw.profile,
+      entries: raw.entries,
+      suggestionHistory: raw.suggestionHistory,
+      coachAdviceHistory: [],
+    };
+  }
   return {
-    version: 2,
+    version: 3,
     profile: raw.profile,
     entries: raw.entries,
     suggestionHistory: [],
+    coachAdviceHistory: [],
   };
 }
 
@@ -46,14 +57,14 @@ export function loadPersistedState(): { ok: true; data: PersistedState } | { ok:
   if (!result.success) {
     return { ok: false, error: "Saved data is out of date or corrupted. You can reset from Settings." };
   }
-  return { ok: true, data: normalizeToV2(result.data) };
+  return { ok: true, data: normalizeToV3(result.data) };
 }
 
 export function savePersistedState(state: PersistedState): { ok: true } | { ok: false; error: string } {
   if (typeof window === "undefined" || !window.localStorage) {
     return { ok: false, error: "Storage is not available in this environment." };
   }
-  const parsed = persistedStateV2Schema.safeParse(state);
+  const parsed = persistedStateV3Schema.safeParse(state);
   if (!parsed.success) {
     return { ok: false, error: "Could not validate data before save." };
   }

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  CoachAdviceInputSnapshot,
   FoodLogEntry,
   FoodLogEntryDraft,
   SuggestionInputSnapshot,
@@ -15,7 +16,7 @@ import type {
   UserProfile,
   UserProfileDraft,
 } from "@nutrilog/shared";
-import { suggestionSnapshotSchema, userProfileSchema } from "@nutrilog/shared";
+import { coachAdviceSchema, suggestionSnapshotSchema, userProfileSchema } from "@nutrilog/shared";
 import { createFoodEntry, updateFoodEntry } from "@/lib/entryFactory.js";
 import {
   clearPersistedState,
@@ -30,6 +31,7 @@ interface AppStateValue {
   profile: UserProfile | null;
   entries: FoodLogEntry[];
   suggestionHistory: PersistedState["suggestionHistory"];
+  coachAdviceHistory: PersistedState["coachAdviceHistory"];
   storageError: string | null;
   loadError: string | null;
   saveProfile: (draft: UserProfileDraft) => void;
@@ -42,6 +44,12 @@ interface AppStateValue {
     date: string;
     suggestions: SuggestionItem[];
     inputSnapshot: SuggestionInputSnapshot;
+  }) => void;
+  recordCoachAdvice: (input: {
+    date: string;
+    sequence: 1 | 2;
+    inputSnapshot: CoachAdviceInputSnapshot;
+    summary: string;
   }) => void;
   resetAll: () => void;
   clearErrors: () => void;
@@ -157,6 +165,33 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const recordCoachAdvice = useCallback(
+    (input: {
+      date: string;
+      sequence: 1 | 2;
+      inputSnapshot: CoachAdviceInputSnapshot;
+      summary: string;
+    }) => {
+      setState((prev) => {
+        const advice = coachAdviceSchema.parse({
+          id: crypto.randomUUID(),
+          date: input.date,
+          sequence: input.sequence,
+          generatedAt: new Date().toISOString(),
+          inputSnapshot: input.inputSnapshot,
+          summary: input.summary,
+        });
+        const coachAdviceHistory = [advice, ...prev.coachAdviceHistory].slice(0, 2000);
+        const next: PersistedState = { ...prev, coachAdviceHistory };
+        const result = persist(next);
+        if (!result.ok) setStorageError(result.error);
+        else setStorageError(null);
+        return next;
+      });
+    },
+    [],
+  );
+
   const recordSuggestionSnapshot = useCallback(
     (input: {
       date: string;
@@ -213,6 +248,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       profile: state.profile,
       entries: state.entries,
       suggestionHistory: state.suggestionHistory,
+      coachAdviceHistory: state.coachAdviceHistory,
       storageError,
       loadError,
       saveProfile,
@@ -222,6 +258,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       deleteEntry,
       addEntries,
       recordSuggestionSnapshot,
+      recordCoachAdvice,
       resetAll,
       clearErrors,
     }),
@@ -230,6 +267,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       state.profile,
       state.entries,
       state.suggestionHistory,
+      state.coachAdviceHistory,
       storageError,
       loadError,
       saveProfile,
@@ -239,6 +277,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       deleteEntry,
       addEntries,
       recordSuggestionSnapshot,
+      recordCoachAdvice,
       resetAll,
       clearErrors,
     ],

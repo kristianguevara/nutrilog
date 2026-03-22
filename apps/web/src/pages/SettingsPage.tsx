@@ -19,7 +19,7 @@ import { compareIsoDate } from "@nutrilog/shared";
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { profile, updateProfile, resetAll, entries, suggestionHistory } = useAppState();
+  const { profile, updateProfile, resetAll, entries, suggestionHistory, coachAdviceHistory } = useAppState();
 
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
@@ -84,7 +84,7 @@ export function SettingsPage() {
       setExportError("Start date must be on or before end date.");
       return;
     }
-    const bundle = buildExportBundle(profile, entries, suggestionHistory, exportStart, exportEnd);
+    const bundle = buildExportBundle(profile, entries, suggestionHistory, coachAdviceHistory, exportStart, exportEnd);
     const stamp = `${exportStart}_${exportEnd}`;
     if (kind === "json") {
       downloadTextFile(`nutrilog-export-${stamp}.json`, exportBundleAsJson(bundle), "application/json");
@@ -184,7 +184,9 @@ export function SettingsPage() {
       <Card className="mb-4">
         <p className="text-sm font-semibold text-slate-100">Download report</p>
         <p className="mt-2 text-sm text-slate-400">
-          Export food entries and suggestion snapshots for a date range (defaults span your first to last logged day).
+          Exports use a versioned <span className="text-slate-300">nutrilog-export</span> format: profile (nickname,
+          email, goals), all food log fields (including IDs and AI metadata), and suggestion snapshots — suitable for
+          spreadsheets, SQL, or future sync.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>

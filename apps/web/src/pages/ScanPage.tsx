@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { FoodLogEntryDraft, MealType } from "@nutrilog/shared";
+import type { FoodLogEntryDraft, LogItemCategory, MealType } from "@nutrilog/shared";
 import { foodLogEntryDraftSchema } from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
@@ -260,7 +260,7 @@ export function ScanPage() {
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300/90">AI assist</p>
-          <h1 className="text-2xl font-semibold text-slate-50">Scan food (estimate)</h1>
+          <h1 className="text-2xl font-semibold text-slate-50">Scan meal (estimate)</h1>
         </div>
         <button
           type="button"
@@ -273,7 +273,8 @@ export function ScanPage() {
 
       <Card className="mb-4">
         <p className="text-sm leading-relaxed text-slate-200">
-          Choose a photo or use the camera, then add an optional description and tap <strong className="text-slate-100">Submit scan</strong>. With the real API, the image is sent to your serverless handler (OpenAI vision) — not stored.
+          Photograph <strong className="text-slate-100">food or drinks</strong> (plates, cups, bottles, cans). Use the camera or upload, add an optional description, then tap{" "}
+          <strong className="text-slate-100">Submit scan</strong>. With the real API, the image is sent to your serverless vision model (OpenAI or Gemini per server config) — image bytes are not stored.
         </p>
 
         <div className="mt-5 space-y-3">
@@ -281,7 +282,7 @@ export function ScanPage() {
             <div>
               <p className="text-sm font-medium text-slate-200">Camera</p>
               <p className="mt-1 text-xs text-slate-500">
-                Opens the camera; after you capture, you can add details and submit — same as upload.
+                Works for meals or beverages — after capture, add details and submit (same flow as upload).
               </p>
               <Button
                 type="button"
@@ -295,7 +296,7 @@ export function ScanPage() {
             <div>
               <p className="text-sm font-medium text-slate-200">Upload file</p>
               <p className="mt-1 text-xs text-slate-500">
-                Pick a photo; you&apos;ll confirm description and submit before scanning.
+                Pick a photo of food or a drink; you&apos;ll confirm description and submit before scanning.
               </p>
               <input
                 ref={uploadInputRef}
@@ -348,7 +349,7 @@ export function ScanPage() {
                   rows={3}
                   maxLength={2000}
                   className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-45"
-                  placeholder="e.g. homemade bowl, ~2 cups rice, grilled salmon — helps the model interpret the photo"
+                  placeholder="e.g. large latte oat milk, meal prep bowl, 12oz can — helps the model interpret the photo"
                   value={scanDescription}
                   onChange={(ev) => setScanDescription(ev.target.value)}
                   disabled={busy}
@@ -511,7 +512,7 @@ export function ScanPage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-name`}>
-                    Food name
+                    {row.draft.itemCategory === "drink" ? "Drink name" : "Food name"}
                     <RequiredMark />
                   </label>
                   <input
@@ -525,18 +526,22 @@ export function ScanPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-cal`}>
-                      Calories
+                    <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-type`}>
+                      Type
                       <RequiredMark />
                     </label>
-                    <input
-                      id={`${row.key}-cal`}
-                      inputMode="numeric"
+                    <select
+                      id={`${row.key}-type`}
                       className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-45"
-                      value={String(row.draft.calories)}
+                      value={row.draft.itemCategory}
                       disabled={busy}
-                      onChange={(ev) => updateItem(row.key, { calories: Number(ev.target.value) })}
-                    />
+                      onChange={(ev) =>
+                        updateItem(row.key, { itemCategory: ev.target.value as LogItemCategory })
+                      }
+                    >
+                      <option value="food">Food</option>
+                      <option value="drink">Drink</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-meal`}>
@@ -557,6 +562,21 @@ export function ScanPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-300" htmlFor={`${row.key}-cal`}>
+                    Calories
+                    <RequiredMark />
+                  </label>
+                  <input
+                    id={`${row.key}-cal`}
+                    inputMode="numeric"
+                    className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-45"
+                    value={String(row.draft.calories)}
+                    disabled={busy}
+                    onChange={(ev) => updateItem(row.key, { calories: Number(ev.target.value) })}
+                  />
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
