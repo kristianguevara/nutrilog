@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { FoodLogEntryDraft, MealType } from "@nutrilog/shared";
 import { foodLogEntryDraftSchema } from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
+import { captureFrameFile, openCameraStream, stopMediaStream } from "@/lib/cameraCapture.js";
 import { mealLabel } from "@/lib/format.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
 import {
@@ -34,6 +35,62 @@ export function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<EditableDraft[]>([]);
   const [lastMeta, setLastMeta] = useState<{ filename: string; size: number } | null>(null);
+  const [scanDescription, setScanDescription] = useState("");
+
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!cameraOpen || !cameraStream || !v) return;
+    v.srcObject = cameraStream;
+    void v.play().catch(() => {
+      /* ignore */
+    });
+    return () => {
+      v.srcObject = null;
+    };
+  }, [cameraOpen, cameraStream]);
+
+  useEffect(() => {
+    return () => {
+      stopMediaStream(cameraStream);
+    };
+  }, [cameraStream]);
+
+  async function openCameraUi() {
+    setError(null);
+    try {
+      const stream = await openCameraStream();
+      setCameraStream(stream);
+      setCameraOpen(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open camera.");
+    }
+  }
+
+  function closeCameraUi() {
+    stopMediaStream(cameraStream);
+    setCameraStream(null);
+    setCameraOpen(false);
+  }
+
+  async function captureFromCamera() {
+    const v = videoRef.current;
+    if (!v) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const file = await captureFrameFile(v);
+      closeCameraUi();
+      await runScan(file, "camera");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Capture failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function runScan(file: File | null, sourceMethod: ScanSourceMethod) {
     if (!file) return;
@@ -46,6 +103,7 @@ export function ScanPage() {
         file,
         imageMetadata: meta,
         defaultMealType: mealDefault,
+        description: scanDescription.trim() || undefined,
       });
       setItems(
         scanned.map((s, idx) => ({
@@ -103,14 +161,30 @@ export function ScanPage() {
 
       <Card className="mb-4">
         <p className="text-sm leading-relaxed text-slate-200">
-          Photos are analyzed in-memory for this MVP (mock). Nothing is uploaded or stored permanently — only optional
-          metadata can be saved with confirmed entries.
-        </p>
-        <p className="mt-3 text-xs text-slate-500">
-          PHASE 2: wire a serverless endpoint + GPT-5.4 mini vision; keep provider swappable in `aiScanService.ts`.
+          With the real API enabled, the image is sent to your serverless handler (OpenAI vision) — not stored. With
+          mock mode, nothing is sent. Only optional metadata is saved with confirmed entries.
         </p>
 
         <div className="mt-5 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-200" htmlFor="scan-description">
+              Description (optional)
+            </label>
+            <textarea
+              id="scan-description"
+              name="description"
+              rows={3}
+              maxLength={2000}
+              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+              placeholder="e.g. homemade bowl, ~2 cups rice, grilled salmon — helps the model interpret the photo"
+              value={scanDescription}
+              onChange={(ev) => setScanDescription(ev.target.value)}
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              Used in the AI prompt when scanning. If you save entries, this text is stored as notes on each line item.
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-200" htmlFor="mealDefault">
               Default meal
@@ -131,26 +205,17 @@ export function ScanPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-200" htmlFor="camera">
-                Camera
-              </label>
-              <input
-                id="camera"
-                name="camera"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="mt-2 block w-full text-sm text-slate-300"
-                disabled={busy}
-                onChange={(ev) => {
-                  const f = ev.target.files?.[0] ?? null;
-                  void runScan(f, "camera");
-                }}
-              />
+              <p className="text-sm font-medium text-slate-200">Camera</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Uses your webcam (desktop) or camera (mobile) via the browser. Requires permission — not file picker.
+              </p>
+              <Button type="button" className="mt-3 w-full" disabled={busy} onClick={() => void openCameraUi()}>
+                Use camera
+              </Button>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-200" htmlFor="upload">
-                Upload
+                Upload file
               </label>
               <input
                 id="upload"
@@ -176,6 +241,35 @@ export function ScanPage() {
           ) : null}
         </div>
       </Card>
+
+      {cameraOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Camera capture"
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-4 shadow-card">
+            <p className="text-sm font-semibold text-slate-100">Camera preview</p>
+            <p className="mt-1 text-xs text-slate-400">{`Allow camera access when prompted. On desktop, this uses your default webcam.`}</p>
+            <video
+              ref={videoRef}
+              className="mt-4 aspect-video w-full rounded-xl bg-black object-cover"
+              playsInline
+              muted
+              autoPlay
+            />
+            <div className="mt-4 flex gap-3">
+              <Button type="button" className="flex-1" onClick={() => void captureFromCamera()} disabled={busy}>
+                Capture
+              </Button>
+              <Button type="button" variant="secondary" className="flex-1" onClick={closeCameraUi} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {items.length > 0 ? (
         <section className="space-y-4" aria-label="Review estimates">

@@ -7,11 +7,19 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { FoodLogEntry, FoodLogEntryDraft, UserProfile, UserProfileDraft } from "@nutrilog/shared";
-import { userProfileSchema } from "@nutrilog/shared";
+import type {
+  FoodLogEntry,
+  FoodLogEntryDraft,
+  SuggestionInputSnapshot,
+  SuggestionItem,
+  UserProfile,
+  UserProfileDraft,
+} from "@nutrilog/shared";
+import { suggestionSnapshotSchema, userProfileSchema } from "@nutrilog/shared";
 import { createFoodEntry, updateFoodEntry } from "@/lib/entryFactory.js";
 import {
   clearPersistedState,
+  createEmptyState,
   loadPersistedState,
   savePersistedState,
   type PersistedState,
@@ -21,6 +29,7 @@ interface AppStateValue {
   ready: boolean;
   profile: UserProfile | null;
   entries: FoodLogEntry[];
+  suggestionHistory: PersistedState["suggestionHistory"];
   storageError: string | null;
   loadError: string | null;
   saveProfile: (draft: UserProfileDraft) => void;
@@ -29,6 +38,11 @@ interface AppStateValue {
   updateEntry: (id: string, draft: FoodLogEntryDraft) => void;
   deleteEntry: (id: string) => void;
   addEntries: (drafts: FoodLogEntryDraft[]) => void;
+  recordSuggestionSnapshot: (input: {
+    date: string;
+    suggestions: SuggestionItem[];
+    inputSnapshot: SuggestionInputSnapshot;
+  }) => void;
   resetAll: () => void;
   clearErrors: () => void;
 }
@@ -45,11 +59,7 @@ function persist(next: PersistedState): { ok: true } | { ok: false; error: strin
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [state, setState] = useState<PersistedState>({
-    version: 1,
-    profile: null,
-    entries: [],
-  });
+  const [state, setState] = useState<PersistedState>(() => createEmptyState());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
 
@@ -57,7 +67,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const loaded = loadPersistedState();
     if (!loaded.ok) {
       setLoadError(loaded.error);
-      setState({ version: 1, profile: null, entries: [] });
+      setState(createEmptyState());
     } else {
       setState(loaded.data);
     }
@@ -147,13 +157,47 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const recordSuggestionSnapshot = useCallback(
+    (input: {
+      date: string;
+      suggestions: SuggestionItem[];
+      inputSnapshot: SuggestionInputSnapshot;
+    }) => {
+      setState((prev) => {
+        const duplicate = prev.suggestionHistory.some(
+          (h) =>
+            h.date === input.date &&
+            JSON.stringify(h.suggestions) === JSON.stringify(input.suggestions) &&
+            JSON.stringify(h.inputSnapshot) === JSON.stringify(input.inputSnapshot),
+        );
+        if (duplicate) return prev;
+
+        const snapshot = suggestionSnapshotSchema.parse({
+          id: crypto.randomUUID(),
+          date: input.date,
+          generatedAt: new Date().toISOString(),
+          inputSnapshot: input.inputSnapshot,
+          suggestions: input.suggestions,
+        });
+
+        const suggestionHistory = [snapshot, ...prev.suggestionHistory].slice(0, 2000);
+        const next: PersistedState = { ...prev, suggestionHistory };
+        const result = persist(next);
+        if (!result.ok) setStorageError(result.error);
+        else setStorageError(null);
+        return next;
+      });
+    },
+    [],
+  );
+
   const resetAll = useCallback(() => {
     const cleared = clearPersistedState();
     if (!cleared.ok) {
       setStorageError(cleared.error);
       return;
     }
-    setState({ version: 1, profile: null, entries: [] });
+    setState(createEmptyState());
     setLoadError(null);
     setStorageError(null);
   }, []);
@@ -168,6 +212,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       ready,
       profile: state.profile,
       entries: state.entries,
+      suggestionHistory: state.suggestionHistory,
       storageError,
       loadError,
       saveProfile,
@@ -176,6 +221,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       updateEntry,
       deleteEntry,
       addEntries,
+      recordSuggestionSnapshot,
       resetAll,
       clearErrors,
     }),
@@ -183,6 +229,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       ready,
       state.profile,
       state.entries,
+      state.suggestionHistory,
       storageError,
       loadError,
       saveProfile,
@@ -191,6 +238,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       updateEntry,
       deleteEntry,
       addEntries,
+      recordSuggestionSnapshot,
       resetAll,
       clearErrors,
     ],

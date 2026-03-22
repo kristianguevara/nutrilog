@@ -8,17 +8,17 @@ NutriLog is a **personal-use**, **mobile-first** **PWA** for nutrition and calor
 
 ## Current status
 
-- **Phase 1 (MVP)** implemented in-repo: onboarding, local-first storage, Today dashboard, manual food CRUD, scan flow (mocked AI), 7-day report, settings, PWA, monorepo.
+- **Phase 1 (MVP)** implemented in-repo: onboarding, local-first storage (v2 with suggestion history), Today dashboard, manual food CRUD, scan flow (mocked AI), **Reports** with custom date range + suggestion history, Settings with **CSV/JSON export**, PWA, monorepo.
 
 ## MVP scope (Phase 1)
 
 - Onboarding (nickname, email, goal, optional calorie target)
-- `localStorage` persistence behind a storage service (swappable later)
-- Today dashboard: meals, totals, macros, target pacing, suggestions
+- `localStorage` persistence behind a storage service (v1→v2 migration; includes **suggestion snapshots**)
+- Today dashboard: meals, totals, macros, target pacing, suggestions (snapshots saved for analysis)
 - Manual food logging with create/edit/delete
-- Scan flow: camera/upload → mock analysis → review → confirm (no auto-save)
-- Settings: edit profile + clear all data
-- 7-day report (averages, simple chart, insights)
+- Scan flow: **getUserMedia camera** or file upload → mock analysis → review → confirm (no auto-save)
+- Settings: edit profile, **export report (JSON/CSV)**, clear all data
+- **Reports** tab: default range **last 7 weeks (49 days)**, user-selectable **calendar range**, charts + **suggestion history** in range
 - PWA installability (`vite-plugin-pwa`)
 - Monorepo: `apps/web`, `apps/api` (placeholder), `packages/shared`
 
@@ -29,19 +29,19 @@ NutriLog is a **personal-use**, **mobile-first** **PWA** for nutrition and calor
 ## Stack
 
 - **Frontend:** React 19, Vite 6, TypeScript, Tailwind CSS 3, React Router 7, `vite-plugin-pwa`, Zod
-- **Shared:** `@nutrilog/shared` — Zod schemas + small date helpers
+- **Shared:** `@nutrilog/shared` — Zod schemas + date helpers + suggestion snapshot types
 - **API:** `@nutrilog/api` — placeholder TypeScript package for Phase 2 serverless contracts
 - **Persistence:** `localStorage` only (abstracted in `storageService.ts`)
 
 ## Deployment
 
-- **Primary target:** Vercel static build from `apps/web` (`vercel.json` at repo root).
+- **Vercel:** Root `vercel.json` uses `outputDirectory: apps/web/dist`. If the Vercel **Root Directory** is set to `apps/web`, use `apps/web/vercel.json` and `outputDirectory: dist` — see `docs/vercel-deployment.md`.
 - Keep handlers **edge/serverless-friendly** for later API routes; avoid tying to vendor-only APIs in app code.
 
 ## AI food scan
 
-- **Phase 1:** Mock provider in `apps/web/src/services/aiScanService.ts` (swappable `FoodScanProvider`).
-- **Phase 2 default model:** **GPT-5.4 mini** (vision) via server route; **never** ship API keys in the web bundle.
+- **Server:** `apps/web/api/food-scan.ts` (Vercel serverless) calls OpenAI vision with JSON output; validates with `@nutrilog/shared` schemas. Env: **`OPENAI_API_KEY`**, optional **`OPENAI_MODEL`** (defaults to **`gpt-4o-mini`** in code; override when your account exposes e.g. **gpt-5.4-mini**).
+- **Client:** `aiScanService.ts` posts base64 JSON to **`/api/food-scan`** (no keys in bundle). Set **`VITE_FOOD_SCAN_MOCK=true`** to force mock. Camera uses **`getUserMedia`**.
 - **Images:** never persist image bytes; only optional **metadata** on confirmed entries.
 
 ## UX principles
@@ -69,4 +69,4 @@ NutriLog is a **personal-use**, **mobile-first** **PWA** for nutrition and calor
 ## Known tradeoffs
 
 - Suggestions use simple heuristics — good for MVP, not personalized coaching.
-- 7-day averages treat non-logged days as zero calories in the average denominator (documented in UI).
+- Range averages divide by **number of days in the selected range** (days without entries count as 0 for calorie totals per day).

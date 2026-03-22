@@ -1,12 +1,13 @@
 import type { FoodLogEntryDraft, ImageMetadata, MealType } from "@nutrilog/shared";
-import { foodLogEntryDraftSchema } from "@nutrilog/shared";
+import {
+  foodLogEntryDraftSchema,
+  foodScanApiResponseSchema,
+} from "@nutrilog/shared";
 import { formatLocalDateIso, formatLocalTimeIso } from "@nutrilog/shared";
 
 /**
- * PHASE 2 — Real integration
- * - Add a swappable `FoodScanProvider` implementation that calls a serverless route (see `apps/api`).
- * - Default model: GPT-5.4 mini (vision) returning structured JSON validated with Zod.
- * - Keep this client-side service as a thin adapter; do not embed API keys in the web bundle.
+ * Client adapter: calls `POST /api/food-scan` (Vercel serverless). API keys stay on the server only.
+ * Set `VITE_FOOD_SCAN_MOCK=true` to force the offline mock (no network).
  */
 
 export type ScanSourceMethod = "camera" | "upload" | "unknown";
@@ -20,8 +21,9 @@ export interface ScannedFoodDraft {
 export interface FoodScanInput {
   file: File;
   imageMetadata: ImageMetadata;
-  /** Default meal when the model cannot infer one */
   defaultMealType: MealType;
+  /** Optional details from the user; sent to the vision API and saved on drafts as `notes`. */
+  description?: string;
 }
 
 export interface FoodScanProvider {
@@ -32,6 +34,7 @@ function buildDraftFromMock(input: FoodScanInput, index: number): ScannedFoodDra
   const now = new Date();
   const date = formatLocalDateIso(now);
   const time = formatLocalTimeIso(now);
+  const desc = input.description?.trim();
   const raw = {
     date,
     time,
@@ -43,11 +46,11 @@ function buildDraftFromMock(input: FoodScanInput, index: number): ScannedFoodDra
     protein: index === 0 ? 28 : 6,
     carbs: index === 0 ? 45 : 22,
     fat: index === 0 ? 22 : 8,
-    notes: undefined,
+    notes: desc || undefined,
     sourceType: "ai_scan" as const,
     aiConfidence: 0.35,
     aiAssumptions:
-      "Mock scan — replace with GPT-5.4 mini vision in Phase 2. Values are illustrative estimates only.",
+      "Mock scan — set VITE_FOOD_SCAN_MOCK=false and deploy with OPENAI_API_KEY for server-side vision.",
     imageMetadata: input.imageMetadata,
   };
   return {
@@ -65,7 +68,84 @@ class MockFoodScanProvider implements FoodScanProvider {
   }
 }
 
-let provider: FoodScanProvider = new MockFoodScanProvider();
+async function fileToBase64Parts(file: File): Promise<{ base64: string; mimeType: string }> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("Could not read image file."));
+    r.readAsDataURL(file);
+  });
+  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!m) throw new Error("Could not encode image as base64.");
+  return { mimeType: m[1]!, base64: m[2]! };
+}
+
+class ApiFoodScanProvider implements FoodScanProvider {
+  async analyzeFoodImage(input: FoodScanInput): Promise<ScannedFoodDraft[]> {
+    const { base64, mimeType } = await fileToBase64Parts(input.file);
+    const now = new Date();
+    const date = formatLocalDateIso(now);
+    const time = formatLocalTimeIso(now);
+
+    const userDescription = input.description?.trim() || undefined;
+
+    const res = await fetch("/api/food-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageBase64: base64,
+        mimeType,
+        defaultMealType: input.defaultMealType,
+        date,
+        time,
+        imageMetadata: input.imageMetadata,
+        ...(userDescription ? { userDescription } : {}),
+      }),
+    });
+
+    const payload = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      throw new Error(payload.error ?? `Scan failed (${res.status})`);
+    }
+
+    const validated = foodScanApiResponseSchema.safeParse(payload);
+    if (!validated.success) {
+      throw new Error("Server response was not valid food scan data.");
+    }
+
+    return validated.data.items.map((item) => {
+      const draft = foodLogEntryDraftSchema.parse({
+        date,
+        time,
+        mealType: item.mealType ?? input.defaultMealType,
+        foodName: item.foodName,
+        quantity: item.quantity,
+        unit: item.unit,
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        notes: userDescription,
+        sourceType: "ai_scan" as const,
+        aiConfidence: item.confidence,
+        aiAssumptions: item.assumptions,
+        imageMetadata: input.imageMetadata,
+      });
+      return {
+        draft,
+        confidence: item.confidence,
+        assumptions: item.assumptions,
+      };
+    });
+  }
+}
+
+let provider: FoodScanProvider = resolveDefaultProvider();
+
+function resolveDefaultProvider(): FoodScanProvider {
+  const mock = import.meta.env.VITE_FOOD_SCAN_MOCK === "true";
+  return mock ? new MockFoodScanProvider() : new ApiFoodScanProvider();
+}
 
 export function setFoodScanProvider(next: FoodScanProvider): void {
   provider = next;

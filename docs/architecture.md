@@ -11,13 +11,13 @@ docs/
 
 ## Frontend (`apps/web`)
 
-- **Routing:** React Router (`/`, `/report`, `/settings`, `/onboarding`, `/food/new`, `/food/:id/edit`, `/scan`)
-- **State:** `AppStateProvider` loads/saves a single persisted snapshot: profile + entries
+- **Routing:** React Router (`/`, `/reports`, `/settings`, `/onboarding`, `/food/new`, `/food/:id/edit`, `/scan`; `/report` redirects to `/reports`)
+- **State:** `AppStateProvider` loads/saves a persisted snapshot: profile + entries + **suggestion history** (versioned storage, migrates from v1)
 - **Services:**
   - `storageService` — `localStorage` + Zod parse/serialize
   - `foodLogService` — aggregations (per day, per meal)
   - `suggestionEngine` — deterministic rules
-  - `analyticsService` — 7-day report
+  - `analyticsService` — arbitrary date-range reports (default UI: last 7 weeks)
   - `aiScanService` — pluggable scan provider (mock for Phase 1)
 
 ## Shared (`packages/shared`)

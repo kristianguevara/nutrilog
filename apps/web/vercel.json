@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @nutrilog/shared build && pnpm --filter @nutrilog/api build && pnpm --filter @nutrilog/web build",
+  "outputDirectory": "dist",
+  "framework": null
+}

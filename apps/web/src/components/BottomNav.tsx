@@ -16,9 +16,9 @@ export function BottomNav() {
           <span aria-hidden>◎</span>
           <span>Today</span>
         </NavLink>
-        <NavLink to="/report" className={linkClass}>
-          <span aria-hidden>7</span>
-          <span>Week</span>
+        <NavLink to="/reports" className={linkClass}>
+          <span aria-hidden>▤</span>
+          <span>Reports</span>
         </NavLink>
         <NavLink to="/settings" className={linkClass}>
           <span aria-hidden>⚙</span>

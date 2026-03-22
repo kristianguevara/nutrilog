@@ -1,22 +1,35 @@
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GoalType } from "@nutrilog/shared";
 import { userProfileDraftSchema } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
+import {
+  buildExportBundle,
+  downloadTextFile,
+  exportBundleAsCsv,
+  exportBundleAsJson,
+  getEntryDateBounds,
+} from "@/lib/exportData.js";
 import { goalLabel } from "@/lib/format.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
+import { compareIsoDate } from "@nutrilog/shared";
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { profile, updateProfile, resetAll } = useAppState();
+  const { profile, updateProfile, resetAll, entries, suggestionHistory } = useAppState();
 
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [goalType, setGoalType] = useState<GoalType>("maintain_weight");
   const [targetRaw, setTargetRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const bounds = useMemo(() => getEntryDateBounds(entries), [entries]);
+  const [exportStart, setExportStart] = useState("");
+  const [exportEnd, setExportEnd] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -25,6 +38,16 @@ export function SettingsPage() {
     setGoalType(profile.goalType);
     setTargetRaw(profile.dailyCalorieTarget ? String(profile.dailyCalorieTarget) : "");
   }, [profile]);
+
+  useEffect(() => {
+    if (bounds.min && bounds.max) {
+      setExportStart(bounds.min);
+      setExportEnd(bounds.max);
+    } else {
+      setExportStart("");
+      setExportEnd("");
+    }
+  }, [bounds.min, bounds.max]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -48,6 +71,25 @@ export function SettingsPage() {
     if (!window.confirm("This clears all NutriLog data on this device. Continue?")) return;
     resetAll();
     navigate("/onboarding", { replace: true });
+  }
+
+  function runExport(kind: "json" | "csv") {
+    setExportError(null);
+    if (!exportStart || !exportEnd) {
+      setExportError("Set both dates to export.");
+      return;
+    }
+    if (compareIsoDate(exportStart, exportEnd) > 0) {
+      setExportError("Start date must be on or before end date.");
+      return;
+    }
+    const bundle = buildExportBundle(profile, entries, suggestionHistory, exportStart, exportEnd);
+    const stamp = `${exportStart}_${exportEnd}`;
+    if (kind === "json") {
+      downloadTextFile(`nutrilog-export-${stamp}.json`, exportBundleAsJson(bundle), "application/json");
+    } else {
+      downloadTextFile(`nutrilog-export-${stamp}.csv`, exportBundleAsCsv(bundle), "text/csv;charset=utf-8");
+    }
   }
 
   if (!profile) {
@@ -133,6 +175,54 @@ export function SettingsPage() {
             Save changes
           </Button>
         </form>
+      </Card>
+
+      <Card className="mb-4">
+        <p className="text-sm font-semibold text-slate-100">Download report</p>
+        <p className="mt-2 text-sm text-slate-400">
+          Export food entries and suggestion snapshots for a date range (defaults span your first to last logged day).
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-slate-400" htmlFor="export-start">
+              From
+            </label>
+            <input
+              id="export-start"
+              type="date"
+              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+              value={exportStart}
+              onChange={(ev) => setExportStart(ev.target.value)}
+              disabled={!bounds.min}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400" htmlFor="export-end">
+              To
+            </label>
+            <input
+              id="export-end"
+              type="date"
+              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+              value={exportEnd}
+              onChange={(ev) => setExportEnd(ev.target.value)}
+              disabled={!bounds.max}
+            />
+          </div>
+        </div>
+        {exportError ? <p className="mt-3 text-sm text-rose-300">{exportError}</p> : null}
+        {!bounds.min ? (
+          <p className="mt-3 text-sm text-slate-500">Log at least one food entry to enable export.</p>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Button type="button" variant="secondary" className="w-full" onClick={() => runExport("json")}>
+              JSON
+            </Button>
+            <Button type="button" variant="secondary" className="w-full" onClick={() => runExport("csv")}>
+              CSV
+            </Button>
+          </div>
+        )}
       </Card>
 
       <Card>

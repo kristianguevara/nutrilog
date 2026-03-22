@@ -1,5 +1,5 @@
 import type { FoodLogEntry } from "@nutrilog/shared";
-import { formatLocalDateIso, parseLocalDateIso } from "@nutrilog/shared";
+import { eachDateInInclusiveRange, formatLocalDateIso, parseLocalDateIso } from "@nutrilog/shared";
 import { sumDayTotals } from "./foodLogService.js";
 
 export interface DayCaloriePoint {
@@ -7,8 +7,11 @@ export interface DayCaloriePoint {
   calories: number;
 }
 
-export interface SevenDayReport {
+export interface RangeReport {
+  startDate: string;
+  endDate: string;
   rangeDates: string[];
+  dayCount: number;
   daysLogged: number;
   avgCalories: number;
   caloriesByDay: DayCaloriePoint[];
@@ -20,26 +23,33 @@ export interface SevenDayReport {
   insights: string[];
 }
 
-function addDaysLocal(base: Date, delta: number): Date {
-  const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta);
-  return d;
+/** Default “Reports” window: last 7 weeks (49 local days) ending today. */
+export function defaultReportsRangeEndToday(): { startDate: string; endDate: string } {
+  const end = new Date();
+  const endDate = formatLocalDateIso(end);
+  const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (7 * 7 - 1));
+  const startDate = formatLocalDateIso(start);
+  return { startDate, endDate };
 }
 
-/** Last 7 local calendar days ending at `endDate` (inclusive). */
-export function getSevenDayRange(endDate: Date): string[] {
-  const dates: string[] = [];
-  for (let i = 6; i >= 0; i -= 1) {
-    dates.push(formatLocalDateIso(addDaysLocal(endDate, -i)));
-  }
-  return dates;
+/** Default Reports window: last `n` inclusive local days ending today (e.g. n=7 → last week). */
+export function defaultLastNDaysInclusive(n: number): { startDate: string; endDate: string } {
+  const end = new Date();
+  const endDate = formatLocalDateIso(end);
+  const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - (n - 1));
+  const startDate = formatLocalDateIso(start);
+  return { startDate, endDate };
 }
 
-export function buildSevenDayReport(
+export function buildRangeReport(
   entries: FoodLogEntry[],
-  endDate: Date,
+  startDate: string,
+  endDate: string,
   dailyCalorieTarget: number | undefined,
-): SevenDayReport {
-  const rangeDates = getSevenDayRange(endDate);
+): RangeReport {
+  const rangeDates = eachDateInInclusiveRange(startDate, endDate);
+  const dayCount = rangeDates.length;
+
   const caloriesByDay: DayCaloriePoint[] = rangeDates.map((date) => ({
     date,
     calories: sumDayTotals(entries, date).calories,
@@ -47,7 +57,7 @@ export function buildSevenDayReport(
 
   const daysLogged = caloriesByDay.filter((d) => d.calories > 0).length;
   const totalCal = caloriesByDay.reduce((s, d) => s + d.calories, 0);
-  const avgCalories = daysLogged > 0 ? totalCal / 7 : 0;
+  const avgCalories = dayCount > 0 ? totalCal / dayCount : 0;
 
   let proteinSum = 0;
   let carbsSum = 0;
@@ -58,9 +68,10 @@ export function buildSevenDayReport(
     carbsSum += t.carbs;
     fatSum += t.fat;
   }
-  const avgProtein = proteinSum / 7;
-  const avgCarbs = carbsSum / 7;
-  const avgFat = fatSum / 7;
+  const denom = dayCount > 0 ? dayCount : 1;
+  const avgProtein = proteinSum / denom;
+  const avgCarbs = carbsSum / denom;
+  const avgFat = fatSum / denom;
 
   const nonZero = caloriesByDay.filter((d) => d.calories > 0);
   const highestDay =
@@ -74,9 +85,9 @@ export function buildSevenDayReport(
 
   const insights: string[] = [];
   insights.push(
-    `You averaged about ${Math.round(avgCalories)} kcal/day over the last 7 days (estimate).`,
+    `You averaged about ${Math.round(avgCalories)} kcal/day across ${dayCount} day(s) in this range (estimate).`,
   );
-  insights.push(`You logged food on ${daysLogged} of the last 7 days.`);
+  insights.push(`You logged food on ${daysLogged} of ${dayCount} day(s) in this range.`);
 
   if (dailyCalorieTarget && daysLogged > 0) {
     if (avgCalories > dailyCalorieTarget + 150) {
@@ -105,11 +116,14 @@ export function buildSevenDayReport(
       daysWithProtein[0]!,
     );
     const label = formatShortWeekday(minP.date);
-    insights.push(`Protein was lowest on ${label} (among days with entries).`);
+    insights.push(`Protein was lowest on ${label} (among days with entries in this range).`);
   }
 
   return {
+    startDate,
+    endDate,
     rangeDates,
+    dayCount,
     daysLogged,
     avgCalories,
     caloriesByDay,

@@ -7,6 +7,15 @@ import { VitePWA } from "vite-plugin-pwa";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  server: {
+    proxy: {
+      // When running `vercel dev` from `apps/web` (often http://127.0.0.1:3000), forward API routes during Vite dev.
+      "/api": {
+        target: process.env.VITE_VERCEL_DEV_URL ?? "http://127.0.0.1:3000",
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

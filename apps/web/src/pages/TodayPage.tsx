@@ -1,5 +1,6 @@
+import { useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { formatLocalDateIso, parseLocalDateIso } from "@nutrilog/shared";
+import { formatLocalDateIso, parseLocalDateIso, suggestionInputSnapshotSchema } from "@nutrilog/shared";
 import type { MealType } from "@nutrilog/shared";
 import { ErrorBanner } from "@/components/ErrorBanner.js";
 import { Button } from "@/components/ui/Button.js";
@@ -16,7 +17,8 @@ function addDaysIso(iso: string, delta: number): string {
 }
 
 export function TodayPage() {
-  const { profile, entries, loadError, storageError, clearErrors } = useAppState();
+  const { profile, entries, loadError, storageError, clearErrors, ready, recordSuggestionSnapshot } =
+    useAppState();
   const [params, setParams] = useSearchParams();
   const raw = params.get("date");
   const today = formatLocalDateIso(new Date());
@@ -33,7 +35,28 @@ export function TodayPage() {
   const target = profile?.dailyCalorieTarget;
   const progress = target ? Math.min(1, dayTotals.calories / target) : null;
 
-  const suggestions = buildSuggestions(profile, entries, selectedDate);
+  const suggestions = useMemo(
+    () => buildSuggestions(profile, entries, selectedDate),
+    [profile, entries, selectedDate],
+  );
+
+  useEffect(() => {
+    if (!ready) return;
+    const totals = sumDayTotals(entries, selectedDate);
+    const entryCount = entries.filter((e) => e.date === selectedDate).length;
+    const inputSnapshot = suggestionInputSnapshotSchema.parse({
+      dayCalories: totals.calories,
+      dayProtein: totals.protein,
+      dayCarbs: totals.carbs,
+      dayFat: totals.fat,
+      entryCount,
+    });
+    recordSuggestionSnapshot({
+      date: selectedDate,
+      suggestions,
+      inputSnapshot,
+    });
+  }, [ready, entries, selectedDate, recordSuggestionSnapshot, suggestions]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-32 pt-6">

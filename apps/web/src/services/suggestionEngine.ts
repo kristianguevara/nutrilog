@@ -1,14 +1,5 @@
-import type { FoodLogEntry, UserProfile } from "@nutrilog/shared";
+import type { FoodLogEntry, SuggestionItem, UserProfile } from "@nutrilog/shared";
 import { sumDayTotals } from "./foodLogService.js";
-
-export type SuggestionTone = "info" | "tip" | "caution";
-
-export interface Suggestion {
-  id: string;
-  tone: SuggestionTone;
-  title: string;
-  body: string;
-}
 
 function approxProteinGoalGrams(targetCalories: number | undefined): number | null {
   if (!targetCalories) return null;
@@ -20,8 +11,8 @@ export function buildSuggestions(
   profile: UserProfile | null,
   entries: FoodLogEntry[],
   date: string,
-): Suggestion[] {
-  const out: Suggestion[] = [];
+): SuggestionItem[] {
+  const out: SuggestionItem[] = [];
 
   if (!profile) {
     return [

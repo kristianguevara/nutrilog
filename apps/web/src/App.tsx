@@ -38,9 +38,10 @@ function AppRoutes() {
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/" element={<ProtectedLayout />}>
         <Route index element={<TodayPage />} />
-        <Route path="report" element={<ReportPage />} />
+        <Route path="reports" element={<ReportPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+      <Route path="/report" element={<Navigate to="/reports" replace />} />
       <Route
         path="/food/new"
         element={
