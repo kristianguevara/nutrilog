@@ -1,5 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="96" fill="#0f172a"/>
-  <path d="M128 320c64-160 160-288 320-352" stroke="#34d399" stroke-width="48" stroke-linecap="round"/>
-  <circle cx="384" cy="160" r="48" fill="#fbbf24"/>
+  <defs>
+    <linearGradient id="nl-bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="nl-leaf" x1="256" y1="120" x2="256" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="nl-vein" x1="256" y1="200" x2="256" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ecfdf5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ecfdf5" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#nl-bg)"/>
+  <!-- Leaf (nutrition) -->
+  <ellipse cx="256" cy="268" rx="118" ry="148" fill="url(#nl-leaf)" transform="rotate(-7 256 268)"/>
+  <path
+    d="M256 188v168"
+    stroke="url(#nl-vein)"
+    stroke-width="26"
+    stroke-linecap="round"
+  />
+  <path
+    d="M256 224c-36 26-58 56-58 96"
+    stroke="#052e16"
+    stroke-opacity="0.2"
+    stroke-width="13"
+    stroke-linecap="round"
+  />
+  <path
+    d="M256 224c36 26 58 56 58 96"
+    stroke="#052e16"
+    stroke-opacity="0.2"
+    stroke-width="13"
+    stroke-linecap="round"
+  />
+  <!-- Macro balance: carbs / protein / fat hue -->
+  <circle cx="196" cy="352" r="28" fill="#fbbf24"/>
+  <circle cx="256" cy="372" r="28" fill="#34d399"/>
+  <circle cx="316" cy="352" r="28" fill="#60a5fa"/>
 </svg>
