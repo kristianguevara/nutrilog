@@ -40,7 +40,7 @@ NutriLog is a **personal-use**, **mobile-first** **PWA** for nutrition and calor
 
 ## AI food scan
 
-- **Server:** `apps/web/api/food-scan.ts` (Vercel serverless) calls OpenAI vision with JSON output; validates with `@nutrilog/shared` schemas. Env: **`OPENAI_API_KEY`**, optional **`OPENAI_MODEL`** (defaults to **`gpt-4o-mini`** in code; override when your account exposes e.g. **gpt-5.4-mini**).
+- **Server:** `apps/web/api/food-scan.ts` (Vercel serverless) delegates to **`apps/web/server/food-scan/`** — **`openai.ts`** (OpenAI vision + JSON) or **`gemini.ts`** (Google Gemini vision + JSON). Same prompt in **`prompt.ts`**; response parsing in **`parseResponse.ts`**. Env: **`FOOD_SCAN_PROVIDER`** = unset/`openai` (needs **`OPENAI_API_KEY`**, optional **`OPENAI_MODEL`**) or **`gemini`**/`google` (needs **`GEMINI_API_KEY`**, optional **`GEMINI_MODEL`** — defaults to **`gemini-2.5-flash`**). Validates with `@nutrilog/shared` schemas. Use model IDs from Google’s docs; legacy **`gemini-1.5-flash`** may 404. Gemini quota `limit: 0` usually requires billing linked on the GCP project; see README troubleshooting.
 - **Client:** `aiScanService.ts` posts base64 JSON to **`/api/food-scan`** (no keys in bundle). Set **`VITE_FOOD_SCAN_MOCK=true`** to force mock. Camera uses **`getUserMedia`**.
 - **Images:** never persist image bytes; only optional **metadata** on confirmed entries.
 

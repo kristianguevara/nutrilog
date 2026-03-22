@@ -101,7 +101,7 @@ export const appStorageSchema = z.object({
   entries: z.array(foodLogEntrySchema),
 });
 
-/** OpenAI food-scan JSON (vision) — validated server-side before mapping to drafts. */
+/** Food-scan JSON (vision models) — validated server-side before mapping to drafts. */
 export const foodScanApiItemSchema = z.object({
   foodName: z.string().min(1).max(200),
   quantity: z.number().positive().finite(),

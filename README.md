@@ -18,15 +18,15 @@ There is **no separate backend process** (no Express, no long‑running server).
 
 Start **`pnpm dev:api` first** so `/api` is up before you scan.
 
-**Local ports — why you see 3031 (and what to ignore)**
+**Local ports — internal Vite under `vercel dev`**
 
-`vercel dev` always starts a **second** Vite process as part of the Vercel CLI (it expects a framework dev server). We pin that one to **3031** so it never fights your real dev server on **3030**. **You do not open http://localhost:3031** for day-to-day work — it is internal to `vercel dev`.
+`vercel dev` starts a **second** Vite process (framework dev server). Vercel assigns it a **dynamic** `PORT` (not fixed). **You do not open that URL** for day-to-day work — it is internal. Your browser uses **3030** only.
 
 | Port | What | Open it? |
 |------|------|----------|
 | **3030** | Your NutriLog UI (`pnpm dev`) | **Yes** |
 | **5173** | `vercel dev` — **`/api/food-scan`** etc. | **No** — the app on **3030** proxies `/api` here |
-| **3031** | Vite subprocess spawned by `vercel dev` | **No** — ignore |
+| **(dynamic)** | Vite subprocess spawned by `vercel dev` | **No** — ignore |
 
 **One terminal only?** For **real** scans you need **both** commands (two terminals). **One terminal** is enough only if you add **`VITE_FOOD_SCAN_MOCK=true`** to **`apps/web/.env`** / **`.env.local`** and run **`pnpm dev`** alone (mock scan, no OpenAI).
 
@@ -79,17 +79,20 @@ pnpm preview  # serve the production build (after build)
 
 There is **no separate Node/Express server**. The only “backend” for scanning is a **Vercel serverless function**. **`pnpm dev` (Vite) does not execute that code** — for a real scan locally run **`pnpm dev:api`** from the **repo root** (see below). In **production**, Vercel runs the same function on **`POST /api/food-scan`**.
 
-- **File:** `apps/web/api/food-scan.ts`
-- **Role:** Accepts JSON (image as base64 + metadata + optional **user description**), calls **OpenAI** vision, returns structured JSON validated with `@nutrilog/shared`.
+- **File:** `apps/web/api/food-scan.ts` (handlers in **`apps/web/server/food-scan/`** — OpenAI and Gemini wrappers)
+- **Role:** Accepts JSON (image as base64 + metadata + optional **user description**), calls **OpenAI** or **Google Gemini** vision (see env below), returns structured JSON validated with `@nutrilog/shared`.
 
 ### Environment variables (never commit secrets)
 
-**OpenAI keys for local development:** create and edit **`apps/web/.env.local`** (same directory as **`apps/web/.env.example`** — copy the example file, then fill in values). For deployed builds, set the same variable names in the **Vercel project’s Environment Variables** UI (not in the repo).
+**API keys for local development:** create and edit **`apps/web/.env.local`** (same directory as **`apps/web/.env.example`** — copy the example file, then fill in values). For deployed builds, set the same variable names in the **Vercel project’s Environment Variables** UI (not in the repo).
 
 | Variable | Where | Purpose |
 |----------|--------|---------|
-| `OPENAI_API_KEY` | Vercel project env, or `apps/web/.env.local` for local serverless | Required for real scans |
+| `FOOD_SCAN_PROVIDER` | Optional | Omit or `openai` (default) — use **`gemini`** or **`google`** for Google Gemini |
+| `OPENAI_API_KEY` | Vercel env, or `apps/web/.env.local` | Required when provider is OpenAI (default) |
 | `OPENAI_MODEL` | Optional | Defaults to `gpt-4o-mini` in code; override if your account uses another vision model ID |
+| `GEMINI_API_KEY` | Vercel env, or `apps/web/.env.local` | Required when **`FOOD_SCAN_PROVIDER=gemini`** (get a key at [Google AI Studio](https://aistudio.google.com/apikey)) |
+| `GEMINI_MODEL` | Optional | Defaults to **`gemini-2.5-flash`** (matches current API model IDs). Legacy names like `gemini-1.5-flash` may return **404**; use names from [Gemini models](https://ai.google.dev/gemini-api/docs/models) (e.g. `gemini-2.5-flash-lite`) |
 | `VITE_FOOD_SCAN_MOCK` | `apps/web/.env.local` only | `true` = browser uses mock scan (skips API) |
 
 Copy **`apps/web/.env.example`** → **`apps/web/.env.local`** and fill in values.
@@ -99,7 +102,7 @@ Copy **`apps/web/.env.example`** → **`apps/web/.env.local`** and fill in value
 **Recommended: Vercel CLI** (runs serverless routes the same way as production).
 
 1. Install the CLI: `npm i -g vercel` (or use `pnpm dlx vercel`).
-2. Ensure **`apps/web/.env`** or **`apps/web/.env.local`** includes **`OPENAI_API_KEY=...`** (see **`.env.example`**).
+2. Ensure **`apps/web/.env`** or **`apps/web/.env.local`** includes **`OPENAI_API_KEY=...`** for OpenAI, or **`FOOD_SCAN_PROVIDER=gemini`** and **`GEMINI_API_KEY=...`** for Gemini (see **`.env.example`**).
 3. From the **repository root**, run (API always on port **5173**):
 
    ```bash
@@ -112,7 +115,11 @@ Copy **`apps/web/.env.example`** → **`apps/web/.env.local`** and fill in value
 
 - **`.../apps/web/apps/web doesn't exist`:** You ran **`vercel dev`** from inside **`apps/web`** while the Vercel project uses **Root Directory = `apps/web`**. Run **`pnpm dev:api`** from the **repository root** (or `vercel dev --listen 5173` / `apps/web` as your link requires).
 
-- **`Port 3030 is already in use` during `vercel dev`:** `vercel dev` starts its **own** Vite helper on **3031** (see root **`vercel.json`** `devCommand` and **`vite.config.ts`** when `VERCEL=1`). Keep **`pnpm dev`** on **3030** in the other terminal — do not run two plain `pnpm dev` on 3030.
+- **`Port 3030 is already in use` during `vercel dev`:** Keep **`pnpm dev`** on **3030** in the other terminal — do not run two plain `pnpm dev` on 3030. If **`vercel dev` restarts** and you see a port-in-use error for the **child** Vite, a previous process may still be bound — stop **`pnpm dev:api`**, kill stray `node`/`vite` processes if needed, then start again.
+
+- **Gemini `404` / `GEMINI_MODEL_NOT_FOUND`:** The model ID in **`GEMINI_MODEL`** is wrong or **retired** (e.g. `gemini-1.5-flash` may not exist on the current API). Use a current ID from [Gemini models](https://ai.google.dev/gemini-api/docs/models); the app default is **`gemini-2.5-flash`**.
+
+- **Gemini `429` / `limit: 0` / `GEMINI_QUOTA_EXCEEDED`:** Google often allocates **no free-tier quota** until you **link a billing account** to the **Google Cloud project** that owns the API key (you may still get free monthly usage). In [Google Cloud Console](https://console.cloud.google.com/) → select the project tied to your key → **Billing** → link an account. Also confirm **Generative Language API** is enabled. If your [AI Studio limits](https://aistudio.google.com/) show quota for **Gemini 2.5 Flash** but not **Gemini 2 Flash**, set **`GEMINI_MODEL`** accordingly. Official: [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
 
 **Using Vite (`pnpm dev`) with the API:** `vite.config.ts` proxies **`/api`** to **`http://127.0.0.1:5173`** by default. Override with **`VITE_VERCEL_DEV_URL`** in `apps/web/.env` / `.env.local` only if you change the listen port. Typical flow:
 

@@ -52,7 +52,7 @@ function buildDraftFromMock(input: FoodScanInput, index: number): ScannedFoodDra
     sourceType: "ai_scan" as const,
     aiConfidence: 0.35,
     aiAssumptions:
-      "Mock scan — set VITE_FOOD_SCAN_MOCK=false and deploy with OPENAI_API_KEY for server-side vision.",
+      "Mock scan — set VITE_FOOD_SCAN_MOCK=false and configure server-side vision (OPENAI_API_KEY or FOOD_SCAN_PROVIDER=gemini with GEMINI_API_KEY).",
     imageMetadata: input.imageMetadata,
   };
   return {
