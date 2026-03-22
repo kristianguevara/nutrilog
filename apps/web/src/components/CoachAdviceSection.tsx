@@ -105,7 +105,7 @@ export function CoachAdviceSection(props: {
     setLoading(true);
     try {
       const { summary } = await requestCoachAdvice(body);
-      recordCoachAdvice({ date: selectedDate, sequence, inputSnapshot, summary });
+      await recordCoachAdvice({ date: selectedDate, sequence, inputSnapshot, summary });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Coach request failed.");
     } finally {

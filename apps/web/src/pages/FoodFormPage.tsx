@@ -117,7 +117,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
     return <Navigate to="/" replace />;
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -152,17 +152,17 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
     }
 
     if (mode === "create") {
-      addEntry(parsed.data);
+      await addEntry(parsed.data);
     } else if (mode === "edit" && id) {
-      updateEntry(id, parsed.data);
+      await updateEntry(id, parsed.data);
     }
     navigate(-1);
   }
 
-  function onDelete() {
+  async function onDelete() {
     if (!id) return;
     if (!window.confirm("Delete this entry?")) return;
-    deleteEntry(id);
+    await deleteEntry(id);
     navigate(-1);
   }
 

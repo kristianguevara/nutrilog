@@ -238,3 +238,36 @@ export type FoodMacroEstimateRequest = z.infer<typeof foodMacroEstimateRequestSc
 export type FoodMacroEstimateResponse = z.infer<typeof foodMacroEstimateResponseSchema>;
 
 export type PersistedStateV3 = z.infer<typeof persistedStateV3Schema>;
+
+/** User block inside a JSON export — `goalType` may be a legacy string. */
+export const nutrilogExportUserSchema = z.object({
+  nickname: z.string(),
+  email: z.string().email(),
+  goalType: z.string(),
+  dailyCalorieTarget: z.number().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+/** Validates a `nutrilog-export` JSON file (v2+; v2 omits `coachAdvice` in the wild). */
+export const nutrilogExportDocumentSchema = z.object({
+  format: z.literal("nutrilog-export"),
+  schemaVersion: z.number().int().min(1).max(99),
+  exportedAt: z.string(),
+  dateRange: z.object({ start: z.string(), end: z.string() }),
+  user: nutrilogExportUserSchema.nullable(),
+  foodLogEntries: z.array(foodLogEntrySchema),
+  suggestionSnapshots: z.array(suggestionSnapshotSchema),
+  coachAdvice: z.array(coachAdviceSchema).optional().default([]),
+});
+
+/** Settings / profile updates when email is owned by auth (Supabase). */
+export const userProfileUpdateDraftSchema = z.object({
+  nickname: z.string().min(1).max(80),
+  goalType: goalTypeSchema,
+  dailyCalorieTarget: z.number().positive().finite().optional(),
+});
+
+export type NutrilogExportUser = z.infer<typeof nutrilogExportUserSchema>;
+export type NutrilogExportDocument = z.infer<typeof nutrilogExportDocumentSchema>;
+export type UserProfileUpdateDraft = z.infer<typeof userProfileUpdateDraftSchema>;

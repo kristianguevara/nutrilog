@@ -4,6 +4,7 @@ import { PullToRefresh } from "@/components/PullToRefresh.js";
 import { AppShell } from "@/layouts/AppShell.js";
 import { AppStateProvider, useAppState } from "@/providers/AppStateProvider.js";
 import { FoodFormPage } from "@/pages/FoodFormPage.js";
+import { LoginPage } from "@/pages/LoginPage.js";
 import { OnboardingPage } from "@/pages/OnboardingPage.js";
 import { ReportPage } from "@/pages/ReportPage.js";
 import { ScanPage } from "@/pages/ScanPage.js";
@@ -31,9 +32,7 @@ function ProtectedLayout() {
   );
 }
 
-function AppRoutes() {
-  const { ready } = useAppState();
-  if (!ready) return <SplashPage />;
+function MainAppRoutes() {
   return (
     <Routes>
       <Route path="/onboarding" element={<OnboardingRoute />} />
@@ -70,6 +69,36 @@ function AppRoutes() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function AppRoutes() {
+  const { ready, isSupabase, session, profile } = useAppState();
+  if (!ready) return <SplashPage />;
+
+  if (!isSupabase) {
+    return <MainAppRoutes />;
+  }
+
+  if (!session) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+      </Routes>
+    );
+  }
+
+  return <MainAppRoutes />;
 }
 
 export function App() {

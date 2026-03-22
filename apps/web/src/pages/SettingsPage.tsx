@@ -1,8 +1,8 @@
-import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GoalType } from "@nutrilog/shared";
-import { userProfileDraftSchema } from "@nutrilog/shared";
+import { compareIsoDate, userProfileDraftSchema } from "@nutrilog/shared";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
 import { RequiredMark } from "@/components/ui/RequiredMark.js";
@@ -15,11 +15,20 @@ import {
 } from "@/lib/exportData.js";
 import { goalLabel } from "@/lib/format.js";
 import { useAppState } from "@/providers/AppStateProvider.js";
-import { compareIsoDate } from "@nutrilog/shared";
 
 export function SettingsPage() {
   const navigate = useNavigate();
-  const { profile, updateProfile, resetAll, entries, suggestionHistory, coachAdviceHistory } = useAppState();
+  const {
+    profile,
+    updateProfile,
+    entries,
+    suggestionHistory,
+    coachAdviceHistory,
+    isSupabase,
+    session,
+    signOut,
+    importNutrilogJson,
+  } = useAppState();
 
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
@@ -32,6 +41,13 @@ export function SettingsPage() {
   const [exportEnd, setExportEnd] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
 
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [mergeProfileFromImport, setMergeProfileFromImport] = useState(true);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!profile) return;
     setNickname(profile.nickname);
@@ -39,6 +55,12 @@ export function SettingsPage() {
     setGoalType(profile.goalType);
     setTargetRaw(profile.dailyCalorieTarget ? String(profile.dailyCalorieTarget) : "");
   }, [profile]);
+
+  useEffect(() => {
+    if (isSupabase && session?.user?.email) {
+      setEmail(session.user.email);
+    }
+  }, [isSupabase, session?.user?.email]);
 
   useEffect(() => {
     if (bounds.min && bounds.max) {
@@ -50,13 +72,14 @@ export function SettingsPage() {
     }
   }, [bounds.min, bounds.max]);
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     const targetNum = targetRaw.trim() === "" ? undefined : Number(targetRaw);
+    const emailForParse = isSupabase && session?.user?.email ? session.user.email : email.trim();
     const parsed = userProfileDraftSchema.safeParse({
       nickname: nickname.trim(),
-      email: email.trim(),
+      email: emailForParse,
       goalType,
       dailyCalorieTarget:
         targetNum === undefined || Number.isNaN(targetNum) ? undefined : targetNum,
@@ -65,13 +88,42 @@ export function SettingsPage() {
       setError("Please check your inputs.");
       return;
     }
-    updateProfile(parsed.data);
+    await updateProfile(parsed.data);
   }
 
-  function onReset() {
-    if (!window.confirm("This clears all NutriLog data on this device. Continue?")) return;
-    resetAll();
-    navigate("/onboarding", { replace: true });
+  async function onSignOut() {
+    await signOut();
+    navigate("/login", { replace: true });
+  }
+
+  function onImportFilePick(ev: ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0];
+    setImportFile(file ?? null);
+    setImportError(null);
+    setImportSuccess(null);
+  }
+
+  async function onImportData() {
+    if (!importFile) return;
+    setImportError(null);
+    setImportSuccess(null);
+    setImportBusy(true);
+    try {
+      const text = await importFile.text();
+      const json = JSON.parse(text) as unknown;
+      const result = await importNutrilogJson(json, { mergeProfile: mergeProfileFromImport });
+      if (!result.ok) {
+        setImportError(result.error);
+        return;
+      }
+      setImportSuccess("Import finished successfully. Your log and related data were updated.");
+      setImportFile(null);
+      if (importFileInputRef.current) importFileInputRef.current.value = "";
+    } catch {
+      setImportError("Could not read or parse that file.");
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   function runExport(kind: "json" | "csv") {
@@ -102,7 +154,11 @@ export function SettingsPage() {
       <header className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300/90">Settings</p>
         <h1 className="mt-2 text-2xl font-semibold text-slate-50">Profile</h1>
-        <p className="mt-2 text-sm text-slate-400">Everything stays on this device for the MVP.</p>
+        <p className="mt-2 text-sm text-slate-400">
+          {isSupabase
+            ? "Profile and log are stored in your Supabase project (PostgreSQL)."
+            : "Everything stays on this device for the MVP."}
+        </p>
       </header>
 
       <Card className="mb-4">
@@ -131,11 +187,19 @@ export function SettingsPage() {
               id="semail"
               name="email"
               type="email"
-              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
+              readOnly={isSupabase}
+              className={`mt-2 w-full rounded-xl border border-slate-800 px-3 py-3 text-sm outline-none ring-emerald-500/30 focus:ring-2 ${
+                isSupabase
+                  ? "cursor-not-allowed bg-slate-900/80 text-slate-400"
+                  : "bg-slate-950 text-slate-100"
+              }`}
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               required
             />
+            {isSupabase ? (
+              <p className="mt-2 text-xs text-slate-500">Email is your account identifier (Supabase Auth).</p>
+            ) : null}
           </div>
 
           <div>
@@ -180,6 +244,61 @@ export function SettingsPage() {
           </Button>
         </form>
       </Card>
+
+      {isSupabase ? (
+        <Card className="mb-4">
+          <p className="text-sm font-semibold text-slate-100">Import backup</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Restore a <span className="text-slate-300">nutrilog-export</span> JSON file. The export&apos;s{" "}
+            <span className="text-slate-300">user.email</span> must match your signed-in account. Existing rows with the
+            same IDs are updated.
+          </p>
+          <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={mergeProfileFromImport}
+              onChange={(ev) => setMergeProfileFromImport(ev.target.checked)}
+              disabled={importBusy}
+            />
+            Also merge nickname, goal, and calorie target from the file
+          </label>
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-400" htmlFor="import-json-file">
+                JSON file
+              </label>
+              <input
+                id="import-json-file"
+                ref={importFileInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-800 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-200"
+                disabled={importBusy}
+                onChange={onImportFilePick}
+              />
+              {importFile ? (
+                <p className="mt-2 text-xs text-slate-500">Selected: {importFile.name}</p>
+              ) : (
+                <p className="mt-2 text-xs text-slate-500">Choose a file, then tap Import data.</p>
+              )}
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={!importFile || importBusy}
+              onClick={() => void onImportData()}
+            >
+              {importBusy ? "Importing…" : "Import data"}
+            </Button>
+          </div>
+          {importSuccess ? (
+            <p className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-100/90">
+              {importSuccess}
+            </p>
+          ) : null}
+          {importError ? <p className="mt-3 text-sm text-rose-300">{importError}</p> : null}
+        </Card>
+      ) : null}
 
       <Card className="mb-4">
         <p className="text-sm font-semibold text-slate-100">Download report</p>
@@ -233,13 +352,15 @@ export function SettingsPage() {
         )}
       </Card>
 
-      <Card>
-        <p className="text-sm font-semibold text-slate-100">Danger zone</p>
-        <p className="mt-2 text-sm text-slate-400">Clear all local NutriLog data and return to onboarding.</p>
-        <Button type="button" variant="danger" className="mt-4 w-full" onClick={onReset}>
-          Clear all local data
-        </Button>
-      </Card>
+      {isSupabase ? (
+        <Card className="mb-4">
+          <p className="text-sm font-semibold text-slate-100">Account</p>
+          <p className="mt-2 text-sm text-slate-400">Sign out on this device. Your data stays in the database.</p>
+          <Button type="button" variant="secondary" className="mt-4 w-full" onClick={() => void onSignOut()}>
+            Sign out
+          </Button>
+        </Card>
+      ) : null}
     </div>
   );
 }

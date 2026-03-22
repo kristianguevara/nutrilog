@@ -61,7 +61,7 @@ export function TodayPage() {
       dayFat: totals.fat,
       entryCount,
     });
-    recordSuggestionSnapshot({
+    void recordSuggestionSnapshot({
       date: selectedDate,
       suggestions,
       inputSnapshot,

@@ -247,9 +247,9 @@ export function ScanPage() {
     );
   }
 
-  function saveAll() {
+  async function saveAll() {
     if (items.length === 0 || busy) return;
-    addEntries(items.map((i) => i.draft));
+    await addEntries(items.map((i) => i.draft));
     navigate(`/?date=${encodeURIComponent(defaultDate)}`);
   }
 
