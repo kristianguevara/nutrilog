@@ -1,0 +1,15 @@
+# Project rules for NutriLog
+
+- Always preserve the MVP scope unless explicitly told to expand it.
+- Prefer mobile-first UI decisions.
+- Do not introduce authentication, cloud databases, or unnecessary infrastructure.
+- Use shared schemas and types when practical.
+- Keep components and services small and readable.
+- Update root `agents.md` and `docs/` when major architectural/product decisions change.
+- Before adding a new dependency, justify why it is needed.
+- Prefer extensible interfaces over hardcoded vendor lock-in.
+- AI food scan provider must remain swappable.
+- Never store uploaded food images permanently.
+- Persist only approved metadata for uploads.
+- Suggestions must stay practical and non-medical.
+- Weekly reporting must stay simple and readable.
