@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { formatLocalDateIso, parseLocalDateIso, suggestionInputSnapshotSchema } from "@nutrilog/shared";
 import type { MealType } from "@nutrilog/shared";
-import { CoachAdviceSection } from "@/components/CoachAdviceSection.js";
+// import { CoachAdviceSection } from "@/components/CoachAdviceSection.js";
 import { ErrorBanner } from "@/components/ErrorBanner.js";
 import { Button } from "@/components/ui/Button.js";
 import { Card } from "@/components/ui/Card.js";
@@ -26,8 +26,8 @@ export function TodayPage() {
     clearErrors,
     ready,
     recordSuggestionSnapshot,
-    coachAdviceHistory,
-    recordCoachAdvice,
+    // coachAdviceHistory,
+    // recordCoachAdvice,
   } = useAppState();
   const [params, setParams] = useSearchParams();
   const raw = params.get("date");
