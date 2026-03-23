@@ -171,6 +171,7 @@ export function TodayPage() {
         <Button className="w-full">📷 Scan meal</Button>
       </Link>
 
+      {/*
       {suggestions.length > 0 ? (
         <section className="mb-6 space-y-3" aria-label="Suggestions">
           <div>
@@ -201,6 +202,7 @@ export function TodayPage() {
           recordCoachAdvice={recordCoachAdvice}
         />
       ) : null}
+       */}
 
       <section className="space-y-4" aria-label="Meals">
         {meals.map((meal) => {
