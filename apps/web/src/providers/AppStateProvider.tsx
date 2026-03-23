@@ -69,7 +69,7 @@ interface AppStateValue {
   }) => Promise<void>;
   recordCoachAdvice: (input: {
     date: string;
-    sequence: 1 | 2;
+    sequence: number;
     inputSnapshot: CoachAdviceInputSnapshot;
     summary: string;
   }) => Promise<void>;
@@ -379,13 +379,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
       if (!session?.user?.id) {
         setStorageError("Not signed in.");
-        return;
+        throw new Error("Not signed in.");
       }
       const supabase = getSupabase();
       const r = await insertFoodEntryRemote(supabase, session.user.id, entry);
       if (!r.ok) {
         setStorageError(r.error);
-        return;
+        throw new Error(r.error);
       }
       setStorageError(null);
       setState((prev) => ({ ...prev, entries: [entry, ...prev.entries] }));
@@ -444,22 +444,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
       if (!session?.user?.id) {
         setStorageError("Not signed in.");
-        return;
+        throw new Error("Not signed in.");
       }
-      setState((prev) => {
-        const existing = prev.entries.find((e) => e.id === id);
-        if (!existing) return prev;
-        const entry = updateFoodEntry(existing, draft);
-        void (async () => {
-          const supabase = getSupabase();
-          const r = await updateFoodEntryRemote(supabase, session.user.id, entry);
-          if (!r.ok) setStorageError(r.error);
-          else setStorageError(null);
-        })();
-        return { ...prev, entries: prev.entries.map((e) => (e.id === id ? entry : e)) };
-      });
+      const existing = state.entries.find((e) => e.id === id);
+      if (!existing) {
+        throw new Error("Entry not found.");
+      }
+      const entry = updateFoodEntry(existing, draft);
+      const supabase = getSupabase();
+      const r = await updateFoodEntryRemote(supabase, session.user.id, entry);
+      if (!r.ok) {
+        setStorageError(r.error);
+        throw new Error(r.error);
+      }
+      setStorageError(null);
+      setState((prev) => ({ ...prev, entries: prev.entries.map((e) => (e.id === id ? entry : e)) }));
     },
-    [isSupabase, session?.user?.id],
+    [isSupabase, session?.user?.id, state.entries],
   );
 
   const deleteEntry = useCallback(
@@ -499,7 +500,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const recordCoachAdvice = useCallback(
     async (input: {
       date: string;
-      sequence: 1 | 2;
+      sequence: number;
       inputSnapshot: CoachAdviceInputSnapshot;
       summary: string;
     }) => {

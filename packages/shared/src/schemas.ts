@@ -99,14 +99,15 @@ export const coachAdviceInputSnapshotSchema = z.object({
 export const coachAdviceSchema = z.object({
   id: z.string().uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  /** 1 = first coach request that day, 2 = second */
-  sequence: z.number().int().min(1).max(2),
+  /** Sequence within day; 1-2 are internal coach calls, higher can be third-party imports. */
+  sequence: z.number().int().min(1).max(20),
   generatedAt: z.string().datetime(),
   inputSnapshot: coachAdviceInputSnapshotSchema,
   summary: z.string().min(1).max(16000),
 });
 
 export const coachAdviceDayEntrySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   mealType: mealTypeSchema,
   itemCategory: logItemCategorySchema,
@@ -117,6 +118,17 @@ export const coachAdviceDayEntrySchema = z.object({
   protein: z.number().nonnegative().finite(),
   carbs: z.number().nonnegative().finite(),
   fat: z.number().nonnegative().finite(),
+});
+
+export const coachAdviceRecentDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  totals: z.object({
+    calories: z.number().nonnegative().finite(),
+    protein: z.number().nonnegative().finite(),
+    carbs: z.number().nonnegative().finite(),
+    fat: z.number().nonnegative().finite(),
+  }),
+  entries: z.array(coachAdviceDayEntrySchema).max(200),
 });
 
 export const coachAdviceRequestSchema = z.object({
@@ -134,6 +146,7 @@ export const coachAdviceRequestSchema = z.object({
     fat: z.number().nonnegative().finite(),
   }),
   entries: z.array(coachAdviceDayEntrySchema).min(1).max(200),
+  recentDays: z.array(coachAdviceRecentDaySchema).min(1).max(7),
 });
 
 export const coachAdviceResponseSchema = z.object({

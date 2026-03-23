@@ -87,6 +87,9 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
   const [fat, setFat] = useState(initial.fat);
   const [notes, setNotes] = useState(initial.notes);
   const [error, setError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
   const [assumptionsHint, setAssumptionsHint] = useState<string | null>(existing?.aiAssumptions ?? null);
@@ -119,7 +122,9 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (saveLoading || deleteLoading) return;
     setError(null);
+    setSaveMessage(null);
 
     const q = Number(quantity);
     const c = Number(calories);
@@ -151,19 +156,36 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
       return;
     }
 
-    if (mode === "create") {
-      await addEntry(parsed.data);
-    } else if (mode === "edit" && id) {
-      await updateEntry(id, parsed.data);
+    setSaveLoading(true);
+    try {
+      if (mode === "create") {
+        await addEntry(parsed.data);
+      } else if (mode === "edit" && id) {
+        await updateEntry(id, parsed.data);
+      }
+      setSaveMessage(mode === "create" ? "Entry saved successfully." : "Entry updated successfully.");
+      setTimeout(() => navigate(-1), 500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save entry.");
+    } finally {
+      setSaveLoading(false);
     }
-    navigate(-1);
   }
 
   async function onDelete() {
-    if (!id) return;
+    if (!id || saveLoading || deleteLoading) return;
     if (!window.confirm("Delete this entry?")) return;
-    await deleteEntry(id);
-    navigate(-1);
+    setDeleteLoading(true);
+    setError(null);
+    setSaveMessage(null);
+    try {
+      await deleteEntry(id);
+      navigate(-1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete entry.");
+    } finally {
+      setDeleteLoading(false);
+    }
   }
 
   async function onAutofillMacros() {
@@ -246,6 +268,8 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
     const url = `https://www.nutritionix.com/search?q=${encodeURIComponent(query)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
+
+  const formBusy = saveLoading || deleteLoading;
 
   /** Google AI overviews often show ranges; kept as optional second lookup. */
   function openGoogleNutritionSearch(): void {
@@ -462,7 +486,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               type="button"
               variant="secondary"
               className="w-full"
-              disabled={!foodName.trim()}
+              disabled={formBusy || !foodName.trim()}
               onClick={openNutritionixSearch}
             >
               Search Nutritionix (database)
@@ -471,7 +495,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               type="button"
               variant="ghost"
               className="w-full text-slate-400 hover:text-slate-200"
-              disabled={!foodName.trim()}
+              disabled={formBusy || !foodName.trim()}
               onClick={openGoogleNutritionSearch}
             >
               Also open Google search
@@ -486,7 +510,7 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               variant="secondary"
               className="w-full"
               disabled={
-                autofillLoading || !foodName.trim() || !quantity.trim() || !unit.trim()
+                formBusy || autofillLoading || !foodName.trim() || !quantity.trim() || !unit.trim()
               }
               onClick={() => void onAutofillMacros()}
             >
@@ -509,7 +533,10 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               <input
                 id="calories"
                 name="calories"
-                inputMode="numeric"
+                type="number"
+                step="any"
+                min="0"
+                inputMode="decimal"
                 className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
                 value={calories}
                 onChange={(ev) => setCalories(ev.target.value)}
@@ -528,6 +555,9 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               <input
                 id="protein"
                 name="protein"
+                type="number"
+                step="any"
+                min="0"
                 inputMode="decimal"
                 className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
                 value={protein}
@@ -543,6 +573,9 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               <input
                 id="carbs"
                 name="carbs"
+                type="number"
+                step="any"
+                min="0"
                 inputMode="decimal"
                 className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
                 value={carbs}
@@ -558,6 +591,9 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
               <input
                 id="fat"
                 name="fat"
+                type="number"
+                step="any"
+                min="0"
                 inputMode="decimal"
                 className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none ring-emerald-500/30 focus:ring-2"
                 value={fat}
@@ -568,14 +604,15 @@ export function FoodFormPage({ mode }: { mode: "create" | "edit" }) {
           </div>
 
           {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {saveMessage ? <p className="text-sm text-emerald-300">{saveMessage}</p> : null}
 
-          <Button type="submit" className="w-full">
-            {mode === "create" ? "Save entry" : "Update entry"}
+          <Button type="submit" className="w-full" disabled={formBusy}>
+            {saveLoading ? "Saving…" : mode === "create" ? "Save entry" : "Update entry"}
           </Button>
 
           {mode === "edit" ? (
-            <Button type="button" variant="danger" className="w-full" onClick={onDelete}>
-              Delete entry
+            <Button type="button" variant="danger" className="w-full" onClick={onDelete} disabled={formBusy}>
+              {deleteLoading ? "Deleting…" : "Delete entry"}
             </Button>
           ) : null}
         </form>
